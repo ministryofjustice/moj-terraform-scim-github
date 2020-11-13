@@ -5,7 +5,7 @@ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 // Axios configuration
 const axios = require('axios')
 const axiosRetry = require('axios-retry')
-axiosRetry(axios, { retries: 5 })
+axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay })
 axios.defaults.headers.common.Authorization = `Bearer ${process.env.SSO_SCIM_TOKEN}`
 
 // AWS SSO SCIM URL
@@ -41,15 +41,15 @@ const utilities = {
       based on it's displayName, using the ListUsers endpoint.
       See: https://docs.aws.amazon.com/singlesignon/latest/developerguide/listusers.html
     */
-    const status = await Promise.all(
-      github.map(async member => {
-        const username = member + process.env.SSO_EMAIL_SUFFIX
-        return {
-          name: username,
-          existsInSSO: await utilities.ssoGetMemberByDisplayName(username)
-        }
+    const status = []
+    for (const member of github) {
+      const username = member + process.env.SSO_EMAIL_SUFFIX
+      const existsInSSO = await utilities.ssoGetMemberByDisplayName(username)
+      status.push({
+        name: username,
+        existsInSSO: existsInSSO
       })
-    )
+    }
 
     return {
       create: status.filter(member => !member.existsInSSO),
@@ -64,8 +64,8 @@ const utilities = {
 
       This Lambda doesn't implement the deletion of users, yet.
     */
-    return Promise.all(
-      members.create.map(async member => {
+    if (members.create.length) {
+      for (const member of members.create) {
         const userObject = {
           userName: member.name,
           name: {
@@ -82,9 +82,15 @@ const utilities = {
             }
           ]
         }
-        return axios.post(`${awsSsoScimUrl}/Users`, userObject)
-      })
-    )
+        await axios.post(`${awsSsoScimUrl}/Users`, userObject).then(() => {
+          console.log(`[info] Member: ${member.name} created.`)
+        }).catch(error => {
+          console.log(`[error] Member: ${member.name} not created:`, error)
+        })
+      }
+    } else {
+      console.log('[info] No members to create in AWS SSO.')
+    }
   },
   /*
     GitHub organisation teams -> AWS SSO groups
@@ -115,12 +121,14 @@ const utilities = {
       based on it's displayName, using the ListGroups endpoint.
       See: https://docs.aws.amazon.com/singlesignon/latest/developerguide/listgroups.html
     */
-    const status = await Promise.all(
-      github.map(async group => ({
+    const status = []
+    for (const group of github) {
+      const existsInSSO = await utilities.ssoGetGroupByDisplayName(group)
+      status.push({
         name: group,
-        existsInSSO: await utilities.ssoGetGroupByDisplayName(group)
-      }))
-    )
+        existsInSSO
+      })
+    }
 
     return {
       create: status.filter(group => !group.existsInSSO),
@@ -133,11 +141,19 @@ const utilities = {
 
       This Lambda doesn't implement the deletion of teams, yet.
     */
-    return Promise.all(
-      groups.create.map(async group => axios.post(`${awsSsoScimUrl}/Groups`, {
-        displayName: group.name
-      }))
-    )
+    if (groups.create.length) {
+      for (const group in groups.create) {
+        await axios.post(`${awsSsoScimUrl}/Groups`, {
+          displayName: group.name
+        }).then(() => {
+          console.log(`[info] Group: ${group.name} was created.`)
+        }).catch(error => {
+          console.log(`[error] Group: ${group.name} not created:`, error)
+        })
+      }
+    } else {
+      console.log('[info] No groups to create.')
+    }
   }
 }
 
