@@ -126,7 +126,7 @@ const utilities = {
       const existsInSSO = await utilities.ssoGetGroupByDisplayName(group)
       status.push({
         name: group,
-        existsInSSO
+        existsInSSO: existsInSSO
       })
     }
 
@@ -142,10 +142,11 @@ const utilities = {
       This Lambda doesn't implement the deletion of teams, yet.
     */
     if (groups.create.length) {
-      for (const group in groups.create) {
-        await axios.post(`${awsSsoScimUrl}/Groups`, {
+      for (const group of groups.create) {
+        const groupObject = {
           displayName: group.name
-        }).then(() => {
+        }
+        await axios.post(`${awsSsoScimUrl}/Groups`, groupObject).then(() => {
           console.log(`[info] Group: ${group.name} was created.`)
         }).catch(error => {
           console.log(`[error] Group: ${group.name} not created:`, error)

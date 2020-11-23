@@ -9,7 +9,7 @@ module.exports.handler = async () => {
     'SSO_EMAIL_SUFFIX',
     'SSO_SCIM_TOKEN',
     'SSO_TENANT_ID'
-  ].forEach(function (variable) {
+  ].forEach(variable => {
     const missing = []
     if (!Object.keys(process.env).includes(variable)) {
       missing.push(variable)
@@ -24,25 +24,25 @@ module.exports.handler = async () => {
     Reconcile groups
   */
   const githubGroups = await utilities.githubGetGroups().catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
   const reconcileGroups = await utilities.reconcileGroups(githubGroups).catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
   await utilities.syncGroups(reconcileGroups).catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
 
   /*
     Reconcile members
   */
   const githubOrgMembers = await utilities.githubGetOrgMembers().catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
   const reconcileMembers = await utilities.reconcileMembers(githubOrgMembers).catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
   await utilities.syncMembers(reconcileMembers).catch(error => {
-    console.log(error)
+    throw new Error(error)
   })
 }
