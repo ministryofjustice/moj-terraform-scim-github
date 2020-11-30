@@ -71,11 +71,21 @@ resource "aws_cloudwatch_event_target" "default" {
 }
 
 # Lambda function
+## Build node_modules
+data "external" "node_modules" {
+  program = ["bash", "-c", <<EOT
+  npm ci >&2 && echo "{\"sso_build_destination\": \"function\"}"
+EOT
+  ]
+  working_dir = "${path.module}/function"
+}
+
 ## ZIP up the function
 data "archive_file" "function" {
   type        = "zip"
   output_path = "${path.module}/function.zip"
   source_dir  = "${path.module}/function"
+  depends_on  = [data.external.node_modules]
 }
 
 ## Create the Lambda function
