@@ -29,7 +29,7 @@ variable "sso_tenant_id" {
 }
 
 variable "tags" {
-  type        = map
+  type        = map(any)
   description = "Tags to apply to resources, where applicable"
   default     = {}
 }
