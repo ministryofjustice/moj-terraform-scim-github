@@ -5,6 +5,7 @@
 This Terraform module to configure a Lambda for SCIM provisioning from GitHub, syncing GitHub to AWS SSO.
 
 ## Usage
+
 ```
 module "scim" {
   source              = "github.com/ministryofjustice/moj-terraform-scim-github"
@@ -18,8 +19,9 @@ module "scim" {
 ```
 
 ## Inputs
+
 | Name                | Description                                                                 | Type   | Default | Required |
-|---------------------|-----------------------------------------------------------------------------|--------|---------|----------|
+| ------------------- | --------------------------------------------------------------------------- | ------ | ------- | -------- |
 | github_organisation | GitHub organisation to sync SSO groups and members from                     | string | n/a     | yes      |
 | github_token        | GitHub token to perform API calls. Must have the following scopes: read:org | string | n/a     | yes      |
 | sso_aws_region      | Region that AWS SSO is configured in                                        | string | n/a     | yes      |
