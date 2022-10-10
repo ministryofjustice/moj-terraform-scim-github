@@ -100,12 +100,12 @@ resource "aws_lambda_function" "default" {
   timeout          = 300
   environment {
     variables = {
-      GITHUB_ORGANISATION = var.github_organisation
-      GITHUB_TOKEN        = var.github_token
-      SSO_AWS_REGION      = var.sso_aws_region
-      SSO_EMAIL_SUFFIX    = var.sso_email_suffix
-      SSO_SCIM_TOKEN      = var.sso_scim_token
-      SSO_TENANT_ID       = var.sso_tenant_id
+      GITHUB_ORGANISATION   = var.github_organisation
+      GITHUB_TOKEN          = var.github_token
+      SSO_AWS_REGION        = var.sso_aws_region
+      SSO_EMAIL_SUFFIX      = var.sso_email_suffix
+      SSO_IDENTITY_STORE_ID = var.sso_identity_store_id
+      NOT_DRY_RUN           = var.not_dry_run
     }
   }
 

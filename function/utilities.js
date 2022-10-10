@@ -1,161 +1,178 @@
-// GitHub rest.js configuration
+// @octokit/rest configuration
 const { Octokit } = require('@octokit/rest')
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 
-// Axios configuration
-const axios = require('axios')
-const axiosRetry = require('axios-retry')
-axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay })
-axios.defaults.headers.common.Authorization = `Bearer ${process.env.SSO_SCIM_TOKEN}`
+// @aws-sdk/client-identitystore configuration
+const {
+  IdentitystoreClient,
+  CreateUserCommand,
+  DeleteUserCommand,
+  CreateGroupCommand,
+  DeleteGroupCommand,
+  paginateListUsers,
+  paginateListGroups
+} = require('@aws-sdk/client-identitystore')
 
-// AWS SSO SCIM URL
-const awsSsoScimUrl = `https://scim.${process.env.SSO_AWS_REGION}.amazonaws.com/${process.env.SSO_TENANT_ID}/scim/v2`
+const identitystoreClient = new IdentitystoreClient({ region: process.env.SSO_AWS_REGION })
+const awsPaginatorConfig = {
+  client: identitystoreClient,
+  pageSize: 100
+}
 
-const utilities = {
-  /*
-    GitHub organisation members -> AWS SSO users
-  */
-  async githubGetOrgMembers () {
-    /*
-      Get all GitHub Organisation members usernames in lowercase
-    */
-    return octokit.paginate(octokit.orgs.listMembers, {
-      org: process.env.GITHUB_ORGANISATION
-    }).then(members => members.map(member => member.login.toLowerCase()))
-  },
-  async ssoGetMemberByDisplayName (member) {
-    /*
-      Check if a user exists in AWS SSO based on their username
-    */
-    const url = `${awsSsoScimUrl}/Users?filter=userName eq "${member}"`
-    return axios.get(url).then(response => response.data.totalResults === 1)
-  },
-  async reconcileMembers (github) {
-    /*
-      Check whether all the GitHub users exist in AWS SSO
+// Generic helpers
+const dryrun = !process.env.NOT_DRY_RUN
 
-      This Lambda doesn't implement flagging for deletion of users, yet.
+// GitHub
+function getGitHubValuesByType (type, key) {
+  const endpoint = type === 'groups' ? octokit.teams.list : octokit.orgs.listMembers
 
-      The ListUsers API endpoint in AWS SSO doesn't respect a startIndex, so we can't paginate
-      through the results. Therefore, we have to call the API everytime we want to check if a user exists,
-      based on it's displayName, using the ListUsers endpoint.
-      See: https://docs.aws.amazon.com/singlesignon/latest/developerguide/listusers.html
-    */
-    const status = []
-    for (const member of github) {
-      const username = member + process.env.SSO_EMAIL_SUFFIX
-      const existsInSSO = await utilities.ssoGetMemberByDisplayName(username)
-      status.push({
-        name: username,
-        existsInSSO: existsInSSO
-      })
-    }
-
-    return {
-      create: status.filter(member => !member.existsInSSO),
-      delete: []
-    }
-  },
-  async syncMembers (members) {
-    /*
-      Sync GitHub users that don't exist into AWS SSO.
-
-      It configures each user with every field set to their GitHub username + email suffix, e.g. "username@example.com"
-
-      This Lambda doesn't implement the deletion of users, yet.
-    */
-    if (members.create.length) {
-      for (const member of members.create) {
-        const userObject = {
-          userName: member.name,
-          name: {
-            familyName: member.name,
-            givenName: member.name
-          },
-          displayName: member.name,
-          active: true,
-          emails: [
-            {
-              value: member.name,
-              type: 'work',
-              primary: true
-            }
-          ]
-        }
-        await axios.post(`${awsSsoScimUrl}/Users`, userObject).then(() => {
-          console.log(`[info] Member: ${member.name} created.`)
-        }).catch(error => {
-          console.log(`[error] Member: ${member.name} not created:`, error)
-        })
+  return octokit.paginate(endpoint, {
+    org: process.env.GITHUB_ORGANISATION
+  }).then(function (list) {
+    return list.map(function (item) {
+      return {
+        name: item[key].toLowerCase()
       }
-    } else {
-      console.log('[info] No members to create in AWS SSO.')
-    }
-  },
-  /*
-    GitHub organisation teams -> AWS SSO groups
-  */
-  async githubGetGroups () {
-    /*
-      Get all GitHub team slugs in an organisation
-    */
-    return octokit.paginate(octokit.teams.list, {
-      org: process.env.GITHUB_ORGANISATION
-    }).then(groups => groups.map(group => group.slug))
-  },
-  async ssoGetGroupByDisplayName (group) {
-    /*
-      Check if a GitHub team already exists in AWS SSO
-    */
-    const url = `${awsSsoScimUrl}/Groups?filter=displayName eq "${group}"`
-    return axios.get(url).then(response => response.data.totalResults === 1)
-  },
-  async reconcileGroups (github) {
-    /*
-      Check whether all the GitHub teams exist in AWS SSO
+    })
+  })
+}
 
-      This Lambda doesn't implement flagging for deletion of teams, yet.
+// Identity Store
+function identityStoreUserMap (user) {
+  return {
+    id: user.UserId,
+    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, '')
+  }
+}
 
-      The ListGroups API endpoint in AWS SSO doesn't respect a startIndex, so we can't paginate
-      through the results. Therefore, we have to call the API everytime we want to check if a group exists,
-      based on it's displayName, using the ListGroups endpoint.
-      See: https://docs.aws.amazon.com/singlesignon/latest/developerguide/listgroups.html
-    */
-    const status = []
-    for (const group of github) {
-      const existsInSSO = await utilities.ssoGetGroupByDisplayName(group)
-      status.push({
-        name: group,
-        existsInSSO: existsInSSO
+function identityStoreGroupMap (group) {
+  return {
+    id: group.GroupId,
+    name: group.DisplayName
+  }
+}
+
+async function getIdentityStoreValuesByType (type) {
+  const paginator = type === 'groups' ? paginateListGroups : paginateListUsers
+  const mapper = type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
+  const key = type === 'groups' ? 'Groups' : 'Users'
+
+  const list = []
+
+  for await (const page of paginator(awsPaginatorConfig, { IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID })) {
+    const values = [...page[key]].map(mapper)
+    list.push(...values)
+  }
+
+  return list
+}
+
+function sendCreateCommand (type, parameters) {
+  const command = type === 'groups' ? new CreateGroupCommand(parameters) : new CreateUserCommand(parameters)
+  return identitystoreClient.send(command)
+}
+
+function sendDeleteCommand (type, parameters) {
+  const command = type === 'groups' ? new DeleteGroupCommand(parameters) : new DeleteUserCommand(parameters)
+  return identitystoreClient.send(command)
+}
+
+// Reconciler
+function reconcile (original, updated) {
+  return {
+    create: updated.filter(function (updatedItem) {
+      return !original.find(function (originalItem) {
+        return originalItem.name === updatedItem.name
       })
-    }
+    }),
+    delete: original.filter(function (originalItem) {
+      return !updated.find(function (updatedItem) {
+        return updatedItem.name === originalItem.name
+      })
+    })
+  }
+}
 
-    return {
-      create: status.filter(group => !group.existsInSSO),
-      delete: []
-    }
-  },
-  async syncGroups (groups) {
-    /*
-      Sync GitHub teams that don't exist into AWS SSO.
-
-      This Lambda doesn't implement the deletion of teams, yet.
-    */
-    if (groups.create.length) {
-      for (const group of groups.create) {
-        const groupObject = {
-          displayName: group.name
-        }
-        await axios.post(`${awsSsoScimUrl}/Groups`, groupObject).then(() => {
-          console.log(`[info] Group: ${group.name} was created.`)
-        }).catch(error => {
-          console.log(`[error] Group: ${group.name} not created:`, error)
-        })
+// Generate parameter shape
+function generateParametersForTypeAction (type, action, data) {
+  if (type === 'groups') {
+    if (action === 'create') {
+      return {
+        DisplayName: data.name,
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
       }
-    } else {
-      console.log('[info] No groups to create.')
+    }
+    if (action === 'delete') {
+      return {
+        GroupId: data.id,
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
+      }
+    }
+  }
+  if (type === 'users') {
+    if (action === 'create') {
+      const name = `${data.name}${process.env.SSO_EMAIL_SUFFIX}`
+
+      return {
+        UserName: name,
+        DisplayName: name,
+        Name: {
+          FamilyName: name,
+          GivenName: name
+        },
+        Emails: [
+          {
+            Primary: true,
+            Type: 'work',
+            Value: name
+          }
+        ],
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
+      }
+    }
+    if (action === 'delete') {
+      return {
+        UserId: data.id,
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
+      }
+    }
+  }
+
+  throw new Error(`Parameters not generated: type "${type}" action "${action}" not valid`)
+}
+
+// Syncer
+async function sync (type, payload) {
+  if (payload.create.length) {
+    for (const needsCreating of payload.create) {
+      const parameters = generateParametersForTypeAction(type, 'create', needsCreating)
+
+      if (dryrun) {
+        console.log(`DRYRUN: [create] [${type}] [${needsCreating.name}]`, JSON.stringify(parameters))
+      } else {
+        console.log(`[create] [${type}] [${needsCreating.name}]`)
+        await sendCreateCommand(type, parameters)
+      }
+    }
+  }
+
+  if (payload.delete.length) {
+    for (const needsDeleting of payload.delete) {
+      const parameters = generateParametersForTypeAction(type, 'delete', needsDeleting)
+
+      if (dryrun) {
+        console.log(`DRYRUN: [delete] [${type}] [${needsDeleting.name}]`, JSON.stringify(parameters))
+      } else {
+        console.log(`[delete] [${type}] [${needsDeleting.name}]`)
+        await sendDeleteCommand(type, parameters)
+      }
     }
   }
 }
 
-module.exports = utilities
+module.exports = {
+  getGitHubValuesByType,
+  getIdentityStoreValuesByType,
+  reconcile,
+  sync
+}
