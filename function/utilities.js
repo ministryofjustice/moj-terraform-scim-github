@@ -20,7 +20,7 @@ const awsPaginatorConfig = {
 }
 
 // Generic helpers
-const dryrun = !process.env.NOT_DRY_RUN
+const dryrun = (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false')
 
 // GitHub
 function getGitHubValuesByType (type, key) {

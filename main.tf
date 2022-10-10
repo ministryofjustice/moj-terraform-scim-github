@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # This is used for the Lambda name and CloudWatch Log group, which is automatically created by AWS
 # but we can manage it via Terraform if we use the same name
 locals {
@@ -33,6 +35,24 @@ data "aws_iam_policy_document" "default" {
     ]
 
     resources = ["${aws_cloudwatch_log_group.default.arn}:*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "identitystore:CreateGroup",
+      "identitystore:CreateUser",
+      "identitystore:DeleteGroup",
+      "identitystore:DeleteUser",
+      "identitystore:ListGroups",
+      "identitystore:ListUsers",
+    ]
+
+    resources = [
+      "arn:aws:identitystore::${data.aws_caller_identity.current.account_id}:identitystore/${var.sso_identity_store_id}",
+      "arn:aws:identitystore:::user/*",
+      "arn:aws:identitystore:::group/*",
+    ]
   }
 }
 

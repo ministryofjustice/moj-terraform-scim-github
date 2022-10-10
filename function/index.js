@@ -19,7 +19,7 @@ module.exports.handler = async () => {
     }
   })
 
-  if (!process.env.NOT_DRY_RUN) {
+  if (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false') {
     console.log('Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)')
   }
 
