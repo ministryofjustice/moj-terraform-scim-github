@@ -18,14 +18,15 @@ variable "sso_email_suffix" {
   description = "Email suffix to use in AWS SSO. It's arbitrary, but may be useful if syncing more than one GitHub organisation"
 }
 
-variable "sso_scim_token" {
+variable "sso_identity_store_id" {
   type        = string
-  description = "AWS SSO SCIM token. Generated and shown only once when you turn on AWS SSO automatic SCIM provisioning"
+  description = "AWS SSO Identity Store ID. Available from the AWS SSO Identity Source settings"
 }
 
-variable "sso_tenant_id" {
+variable "not_dry_run" {
   type        = string
-  description = "AWS SSO tenant ID. Available from the Automatic provisioning section in AWS SSO"
+  description = "Whether this is a dry run Lambda or not"
+  default     = false
 }
 
 variable "tags" {
