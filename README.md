@@ -1,5 +1,7 @@
 # moj-terraform-scim-github
 
+[![repo standards badge](https://img.shields.io/badge/dynamic/json?color=blue&style=for-the-badge&logo=github&label=MoJ%20Compliant&query=%24.result&url=https%3A%2F%2Foperations-engineering-reports.cloud-platform.service.justice.gov.uk%2Fapi%2Fv1%2Fcompliant_public_repositories%2Fmoj-terraform-scim-github)](https://operations-engineering-reports.cloud-platform.service.justice.gov.uk/public-github-repositories.html#moj-terraform-scim-github "Link to report")
+
 This Terraform module configures a Lambda function for provisioning (and deprovisioning) AWS SSO Identity Store users and groups from GitHub.
 
 The Lambda function used to use the SCIM endpoints (hence its name, _moj-terraform-scim-github_), but now uses the direct [Identity Store API](https://docs.aws.amazon.com/singlesignon/latest/IdentityStoreAPIReference/API_Operations.html). The SCIM API has limitations such as not being able to list more than 50 groups or members (and doesn't support startIndex, so you can't paginate them), whereas the Identity Store API does allow pagination. This allows us to deprovision users and groups using the Identity Store API, which you cannot do easily with the SCIM API.
