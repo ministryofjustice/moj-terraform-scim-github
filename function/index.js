@@ -7,8 +7,7 @@ module.exports.handler = async () => {
     'GITHUB_TOKEN',
     'SSO_AWS_REGION',
     'SSO_EMAIL_SUFFIX',
-    'SSO_SCIM_TOKEN',
-    'SSO_TENANT_ID'
+    'SSO_IDENTITY_STORE_ID'
   ].forEach(variable => {
     const missing = []
     if (!Object.keys(process.env).includes(variable)) {
@@ -20,29 +19,35 @@ module.exports.handler = async () => {
     }
   })
 
+  if (!process.env.NOT_DRY_RUN) {
+    console.log('Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)')
+  }
+
   /*
     Reconcile groups
   */
-  const githubGroups = await utilities.githubGetGroups().catch(error => {
+  const githubGroups = await utilities.getGitHubValuesByType('groups', 'slug').catch(error => {
     throw new Error(error)
   })
-  const reconcileGroups = await utilities.reconcileGroups(githubGroups).catch(error => {
+  const identityStoreGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
     throw new Error(error)
   })
-  await utilities.syncGroups(reconcileGroups).catch(error => {
+  const reconcileGroups = utilities.reconcile(identityStoreGroups, githubGroups)
+  const syncGroups = await utilities.sync('groups', reconcileGroups).catch(error => {
     throw new Error(error)
   })
 
   /*
-    Reconcile members
+    Reconcile users
   */
-  const githubOrgMembers = await utilities.githubGetOrgMembers().catch(error => {
+  const githubUsers = await utilities.getGitHubValuesByType('users', 'login').catch(error => {
     throw new Error(error)
   })
-  const reconcileMembers = await utilities.reconcileMembers(githubOrgMembers).catch(error => {
+  const identityStoreUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
     throw new Error(error)
   })
-  await utilities.syncMembers(reconcileMembers).catch(error => {
+  const reconcileUsers = utilities.reconcile(identityStoreUsers, githubUsers)
+  const syncUsers = await utilities.sync('users', reconcileUsers).catch(error => {
     throw new Error(error)
   })
 }
