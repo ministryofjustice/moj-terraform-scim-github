@@ -1,14 +1,19 @@
-// @octokit/rest configuration
-const { Octokit } = require('@octokit/rest')
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+// @octokit/core configuration
+const { Octokit } = require('@octokit/core')
+const { paginateGraphql } = require('@octokit/plugin-paginate-graphql')
+const OctokitWithPagination = Octokit.plugin(paginateGraphql)
+const octokit = new OctokitWithPagination({ auth: process.env.GITHUB_TOKEN })
 
 // @aws-sdk/client-identitystore configuration
 const {
   IdentitystoreClient,
-  CreateUserCommand,
-  DeleteUserCommand,
   CreateGroupCommand,
+  CreateGroupMembershipCommand,
+  CreateUserCommand,
   DeleteGroupCommand,
+  DeleteGroupMembershipCommand,
+  DeleteUserCommand,
+  ListGroupMembershipsCommand,
   paginateListUsers,
   paginateListGroups
 } = require('@aws-sdk/client-identitystore')
@@ -23,18 +28,59 @@ const awsPaginatorConfig = {
 const dryrun = (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false')
 
 // GitHub
-function getGitHubValuesByType (type, key) {
-  const endpoint = type === 'groups' ? octokit.teams.list : octokit.orgs.listMembers
+function generateQuery () {
+  return `
+    query paginate($cursor: String, $organization: String!) {
+      organization(login: $organization) {
+        teams(first: 100, after: $cursor) {
+          nodes {
+            slug
+            members {
+              nodes {
+                login
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  `
+}
 
-  return octokit.paginate(endpoint, {
-    org: process.env.GITHUB_ORGANISATION
-  }).then(function (list) {
-    return list.map(function (item) {
+async function getGitHubOrganisationTeamsAndMemberships () {
+  const { organization } = await octokit.graphql.paginate(generateQuery(), { organization: process.env.GITHUB_ORGANISATION })
+
+  const teamsWithoutAllOrgMembers = organization.teams.nodes.filter((team) => team.slug !== 'all-org-members')
+
+  const teams = teamsWithoutAllOrgMembers.map((team) => {
+    return {
+      name: team.slug.toLowerCase(),
+      members: team.members.nodes.map((user) => {
+        return {
+          name: user.login.toLowerCase()
+        }
+      })
+    }
+  })
+
+  const users = teamsWithoutAllOrgMembers.map((team) => {
+    return team.members.nodes.map((member) => {
+      return member.login.toLowerCase()
+    })
+  }).flat()
+
+  return {
+    teams: teams,
+    users: [...new Set(users)].map((username) => {
       return {
-        name: item[key].toLowerCase()
+        name: username.toLowerCase()
       }
     })
-  })
+  }
 }
 
 // Identity Store
@@ -68,13 +114,55 @@ async function getIdentityStoreValuesByType (type) {
 }
 
 function sendCreateCommand (type, parameters) {
-  const command = type === 'groups' ? new CreateGroupCommand(parameters) : new CreateUserCommand(parameters)
+  let command
+
+  if (type === 'groups') {
+    command = new CreateGroupCommand(parameters)
+  }
+
+  if (type === 'users') {
+    command = new CreateUserCommand(parameters)
+  }
+
+  if (type === 'membership') {
+    command = new CreateGroupMembershipCommand(parameters)
+  }
+
   return identitystoreClient.send(command)
 }
 
 function sendDeleteCommand (type, parameters) {
-  const command = type === 'groups' ? new DeleteGroupCommand(parameters) : new DeleteUserCommand(parameters)
+  let command
+
+  if (type === 'groups') {
+    command = new DeleteGroupCommand(parameters)
+  }
+
+  if (type === 'users') {
+    command = new DeleteUserCommand(parameters)
+  }
+
+  if (type === 'membership') {
+    command = new DeleteGroupMembershipCommand(parameters)
+  }
+
   return identitystoreClient.send(command)
+}
+
+async function getIdentityStoreGroupMemberships (groupId) {
+  const parameters = {
+    IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+    GroupId: groupId
+  }
+  const command = new ListGroupMembershipsCommand(parameters)
+  const response = await identitystoreClient.send(command)
+
+  return response.GroupMemberships.map((membership) => {
+    return {
+      userId: membership.MemberId.UserId,
+      membershipId: membership.MembershipId
+    }
+  })
 }
 
 // Reconciler
@@ -109,6 +197,7 @@ function generateParametersForTypeAction (type, action, data) {
       }
     }
   }
+
   if (type === 'users') {
     if (action === 'create') {
       const name = `${data.name}${process.env.SSO_EMAIL_SUFFIX}`
@@ -138,20 +227,62 @@ function generateParametersForTypeAction (type, action, data) {
     }
   }
 
+  if (type === 'membership') {
+    if (action === 'create') {
+      return {
+        GroupId: data.group.id,
+        MemberId: {
+          UserId: data.id
+        },
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
+      }
+    }
+    if (action === 'delete') {
+      return {
+        MembershipId: data.membershipId,
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
+      }
+    }
+  }
+
   throw new Error(`Parameters not generated: type "${type}" action "${action}" not valid`)
 }
 
 // Syncer
+function generateMessage (action, type, data, meta) {
+  const message = []
+
+  if (dryrun) {
+    message.push('DRYRUN:')
+  }
+
+  message.push(`[${action}]`)
+  message.push(`[${type}]`)
+
+  if (type === 'membership') {
+    message.push(`[${data.name} <=> ${data.group.name}]`)
+  } else {
+    message.push(`[${data.name}]`)
+  }
+
+  message.push(meta)
+
+  return message.join(' ')
+}
+
 async function sync (type, payload) {
   if (payload.create.length) {
     for (const needsCreating of payload.create) {
       const parameters = generateParametersForTypeAction(type, 'create', needsCreating)
 
-      if (dryrun) {
-        console.log(`DRYRUN: [create] [${type}] [${needsCreating.name}]`, JSON.stringify(parameters))
-      } else {
-        console.log(`[create] [${type}] [${needsCreating.name}]`)
-        await sendCreateCommand(type, parameters)
+      console.log(generateMessage('create', type, needsCreating, JSON.stringify(parameters)))
+
+      if (!dryrun) {
+        try {
+          await sendCreateCommand(type, parameters)
+        } catch (error) {
+          console.log('[error]', error)
+        }
       }
     }
   }
@@ -160,19 +291,23 @@ async function sync (type, payload) {
     for (const needsDeleting of payload.delete) {
       const parameters = generateParametersForTypeAction(type, 'delete', needsDeleting)
 
-      if (dryrun) {
-        console.log(`DRYRUN: [delete] [${type}] [${needsDeleting.name}]`, JSON.stringify(parameters))
-      } else {
-        console.log(`[delete] [${type}] [${needsDeleting.name}]`)
-        await sendDeleteCommand(type, parameters)
+      console.log(generateMessage('delete', type, needsDeleting, JSON.stringify(parameters)))
+
+      if (!dryrun) {
+        try {
+          await sendDeleteCommand(type, parameters)
+        } catch (error) {
+          console.log('[error]', error)
+        }
       }
     }
   }
 }
 
 module.exports = {
-  getGitHubValuesByType,
+  getGitHubOrganisationTeamsAndMemberships,
   getIdentityStoreValuesByType,
+  getIdentityStoreGroupMemberships,
   reconcile,
   sync
 }
