@@ -10,7 +10,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-identitystore": "^3.196.0",
+    "@aws-sdk/client-identitystore": "^3.197.0",
     "@octokit/rest": "^19.0.5"
   }
 }
