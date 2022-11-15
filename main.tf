@@ -41,9 +41,14 @@ data "aws_iam_policy_document" "default" {
     effect = "Allow"
     actions = [
       "identitystore:CreateGroup",
+      "identitystore:CreateGroupMembership",
       "identitystore:CreateUser",
       "identitystore:DeleteGroup",
+      "identitystore:DeleteGroupMembership",
       "identitystore:DeleteUser",
+      "identitystore:DescribeGroup",
+      "identitystore:DescribeGroupMembership",
+      "identitystore:ListGroupMemberships",
       "identitystore:ListGroups",
       "identitystore:ListUsers",
     ]
@@ -52,6 +57,7 @@ data "aws_iam_policy_document" "default" {
       "arn:aws:identitystore::${data.aws_caller_identity.current.account_id}:identitystore/${var.sso_identity_store_id}",
       "arn:aws:identitystore:::user/*",
       "arn:aws:identitystore:::group/*",
+      "arn:aws:identitystore:::membership/*"
     ]
   }
 }
@@ -82,7 +88,7 @@ resource "aws_cloudwatch_log_group" "default" {
 resource "aws_cloudwatch_event_rule" "default" {
   name                = "run-${local.name}-daily"
   description         = "Scheduled event for ${local.name}"
-  schedule_expression = "cron(0 6 * * ? *)"
+  schedule_expression = "cron(0 0/6 * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "default" {
@@ -118,6 +124,7 @@ resource "aws_lambda_function" "default" {
   runtime          = "nodejs14.x"
   source_code_hash = data.archive_file.function.output_base64sha256
   timeout          = 300
+  memory_size      = 512
   environment {
     variables = {
       GITHUB_ORGANISATION   = var.github_organisation
