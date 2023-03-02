@@ -38,6 +38,7 @@ function generateQuery () {
             members {
               nodes {
                 login
+                organizationVerifiedDomainEmails(login: $organization)
               }
             }
           }
@@ -51,6 +52,10 @@ function generateQuery () {
   `
 }
 
+function filterDuplicateUserNames (users) {
+  return users
+}
+
 async function getGitHubOrganisationTeamsAndMemberships () {
   const { organization } = await octokit.graphql.paginate(generateQuery(), { organization: process.env.GITHUB_ORGANISATION })
 
@@ -59,25 +64,30 @@ async function getGitHubOrganisationTeamsAndMemberships () {
   const teams = teamsWithoutAllOrgMembers.map((team) => {
     return {
       name: team.slug.toLowerCase(),
-      members: team.members.nodes.map((user) => {
+      members: team.members.nodes.map((node) => {
         return {
-          name: user.login.toLowerCase()
+          name: node.login.toLowerCase()
         }
       })
     }
   })
 
   const users = teamsWithoutAllOrgMembers.map((team) => {
-    return team.members.nodes.map((member) => {
-      return member.login.toLowerCase()
+    return team.members.nodes.map((node) => {
+      return {
+        login: node.login.toLowerCase(),
+        verifiedEmail: node.organizationVerifiedDomainEmails[0].toLowerCase() || ""
+      }
     })
   }).flat()
 
+
   return {
     teams: teams,
-    users: [...new Set(users)].map((username) => {
+    users: [filterDuplicateUserNames(users)].map((user) => {
       return {
-        name: username.toLowerCase()
+        name: user.login,
+        verifiedEmail: user.verifiedEmail
       }
     })
   }

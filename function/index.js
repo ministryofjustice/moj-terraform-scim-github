@@ -28,74 +28,78 @@ module.exports.handler = async () => {
   */
   const github = await utilities.getGitHubOrganisationTeamsAndMemberships()
 
-  /*
-    Reconcile groups
-  */
-  const identityStoreGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
-    throw new Error(error)
-  })
-  const reconcileGroups = utilities.reconcile(identityStoreGroups, github.teams)
-  const syncGroups = await utilities.sync('groups', reconcileGroups).catch(error => {
-    throw new Error(error)
-  })
+  console.log(github)
 
-  /*
-    Reconcile users
-  */
-  const identityStoreUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
-    throw new Error(error)
-  })
-  const reconcileUsers = utilities.reconcile(identityStoreUsers, github.users)
-  const syncUsers = await utilities.sync('users', reconcileUsers).catch(error => {
-    throw new Error(error)
-  })
-
-  /*
-    Reconcile group memberships
-  */
-  const refreshedGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
-    throw new Error(error)
-  })
-  const refreshedUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
-    throw new Error(error)
-  })
-
-  for await (const group of refreshedGroups) {
-    const groupMemberships = await utilities.getIdentityStoreGroupMemberships(group.id)
-    const groupMembershipsWithGroupDetails = groupMemberships.map((membership) => {
-      const user = refreshedUsers.find(function (user) {
-        return user.id === membership.userId
-      })
-
-      return {
-        ...user,
-        membershipId: membership.membershipId,
-        group: group
-      }
-    })
-
-    const githubTeam = github.teams.find((team) => {
-      return team.name === group.name
-    })
-
-    if (!githubTeam) {
-      console.log(`cannot find ${group.name} - skipping`)
-    } else {
-      const githubTeamMembership = githubTeam.members.map((user) => {
-        const refreshedUser = refreshedUsers.find((refreshedUser) => {
-          return refreshedUser.name === user.name
-        })
-
-        return {
-          ...refreshedUser,
-          group: group
-        }
-      })
-
-      const reconcileMembership = utilities.reconcile(groupMembershipsWithGroupDetails, githubTeamMembership)
-      const syncMembership = await utilities.sync('membership', reconcileMembership).catch(error => {
-        throw new Error(error)
-      })
-    }
-  }
+  // /*
+  //   Reconcile groups
+  // */
+  // const identityStoreGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
+  //   throw new Error(error)
+  // })
+  // const reconcileGroups = utilities.reconcile(identityStoreGroups, github.teams)
+  // const syncGroups = await utilities.sync('groups', reconcileGroups).catch(error => {
+  //   throw new Error(error)
+  // })
+  //
+  // /*
+  //   Reconcile users
+  // */
+  // const identityStoreUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
+  //   throw new Error(error)
+  // })
+  // const reconcileUsers = utilities.reconcile(identityStoreUsers, github.users)
+  // const syncUsers = await utilities.sync('users', reconcileUsers).catch(error => {
+  //   throw new Error(error)
+  // })
+  //
+  // /*
+  //   Reconcile group memberships
+  // */
+  // const refreshedGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
+  //   throw new Error(error)
+  // })
+  // const refreshedUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
+  //   throw new Error(error)
+  // })
+  //
+  // for await (const group of refreshedGroups) {
+  //   const groupMemberships = await utilities.getIdentityStoreGroupMemberships(group.id)
+  //   const groupMembershipsWithGroupDetails = groupMemberships.map((membership) => {
+  //     const user = refreshedUsers.find(function (user) {
+  //       return user.id === membership.userId
+  //     })
+  //
+  //     return {
+  //       ...user,
+  //       membershipId: membership.membershipId,
+  //       group: group
+  //     }
+  //   })
+  //
+  //   const githubTeam = github.teams.find((team) => {
+  //     return team.name === group.name
+  //   })
+  //
+  //   if (!githubTeam) {
+  //     console.log(`cannot find ${group.name} - skipping`)
+  //   } else {
+  //     const githubTeamMembership = githubTeam.members.map((user) => {
+  //       const refreshedUser = refreshedUsers.find((refreshedUser) => {
+  //         return refreshedUser.name === user.name
+  //       })
+  //
+  //       return {
+  //         ...refreshedUser,
+  //         group: group
+  //       }
+  //     })
+  //
+  //     const reconcileMembership = utilities.reconcile(groupMembershipsWithGroupDetails, githubTeamMembership)
+  //     const syncMembership = await utilities.sync('membership', reconcileMembership).catch(error => {
+  //       throw new Error(error)
+  //     })
+  //   }
+  // }
 }
+
+module.exports.handler()
