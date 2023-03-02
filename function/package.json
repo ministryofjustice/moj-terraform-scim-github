@@ -10,7 +10,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-identitystore": "^3.267.0",
+    "@aws-sdk/client-identitystore": "^3.282.0",
     "@octokit/core": "^4.2.0",
     "@octokit/plugin-paginate-graphql": "^2.0.1"
   }
