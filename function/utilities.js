@@ -53,7 +53,13 @@ function generateQuery () {
 }
 
 function filterDuplicateUserNames (users) {
-  return users
+  const uniqueUserLoginNames = []
+  return users.filter(user => {
+    if (!uniqueUserLoginNames.includes(user.login)) {
+      uniqueUserLoginNames.push(user.login)
+      return user
+    }
+  })
 }
 
 async function getGitHubOrganisationTeamsAndMemberships () {
