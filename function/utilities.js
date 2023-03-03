@@ -76,7 +76,7 @@ async function getGitHubOrganisationTeamsAndMemberships () {
     return team.members.nodes.map((node) => {
       return {
         login: node.login.toLowerCase(),
-        verifiedEmail: node?.organizationVerifiedDomainEmails[0]?.toLowerCase() || ""
+        verifiedEmail: node?.organizationVerifiedDomainEmails[0]?.toLowerCase() || `${node.login.toLowerCase()}@${process.env.SSO_EMAIL_SUFFIX}`
       }
     })
   }).flat()
@@ -84,7 +84,7 @@ async function getGitHubOrganisationTeamsAndMemberships () {
 
   return {
     teams: teams,
-    users: [filterDuplicateUserNames(users)].map((user) => {
+    users: filterDuplicateUserNames(users).map((user) => {
       return {
         name: user.login,
         verifiedEmail: user.verifiedEmail
