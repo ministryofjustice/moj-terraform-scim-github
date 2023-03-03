@@ -76,7 +76,7 @@ async function getGitHubOrganisationTeamsAndMemberships () {
     return team.members.nodes.map((node) => {
       return {
         login: node.login.toLowerCase(),
-        verifiedEmail: node.organizationVerifiedDomainEmails[0].toLowerCase() || ""
+        verifiedEmail: node?.organizationVerifiedDomainEmails[0]?.toLowerCase() || ""
       }
     })
   }).flat()
