@@ -13,6 +13,6 @@ updates:
     directory: "/function" # Location of package manifests
     ignore:
       - dependency-name: "@aws-sdk/client-identitystore"
-        update-types: ["version-update:semver-patch"]
+        update-types: ["version-update:semver-minor"]
     schedule:
       interval: "daily"
