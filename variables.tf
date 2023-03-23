@@ -6,7 +6,7 @@ variable "github_organisation" {
 variable "github_token" {
   type        = string
   description = "GitHub token to perform API calls. Must have the following scopes: read:org"
-  sensitive = true
+  sensitive   = true
 }
 
 variable "sso_aws_region" {
@@ -22,7 +22,7 @@ variable "sso_email_suffix" {
 variable "sso_identity_store_id" {
   type        = string
   description = "AWS SSO Identity Store ID. Available from the AWS SSO Identity Source settings"
-  sensitive = true
+  sensitive   = true
 }
 
 variable "not_dry_run" {
