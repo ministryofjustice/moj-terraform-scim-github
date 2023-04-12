@@ -9,6 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+      time: "09:00" # UTC
   - package-ecosystem: "npm" # See documentation for possible values
     directory: "/function" # Location of package manifests
     ignore:
@@ -16,3 +17,4 @@ updates:
         update-types: ["version-update:semver-minor"]
     schedule:
       interval: "daily"
+      time: "09:00" # UTC
