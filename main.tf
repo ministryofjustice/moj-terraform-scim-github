@@ -121,10 +121,12 @@ resource "aws_lambda_function" "default" {
   handler          = "index.handler"
   kms_key_arn      = data.aws_kms_alias.lambda.target_key_arn
   role             = aws_iam_role.default.arn
-  runtime          = "nodejs14.x"
+  runtime          = "nodejs20.x"
   source_code_hash = data.archive_file.function.output_base64sha256
   timeout          = 300
   memory_size      = 512
+  architectures    = ["arm64"]
+
   environment {
     variables = {
       GITHUB_ORGANISATION   = var.github_organisation
