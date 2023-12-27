@@ -12,7 +12,7 @@ data "aws_kms_alias" "lambda" {
 }
 
 # IAM role
-data "aws_iam_policy_document" "assume-role" {
+data "aws_iam_policy_document" "assume_role" {
   statement {
     effect  = "Allow"
     actions = ["sts:AssumeRole"]
@@ -74,7 +74,7 @@ resource "aws_iam_role_policy_attachment" "default" {
 
 resource "aws_iam_role" "default" {
   name               = "aws-sso-scim-github-lambda"
-  assume_role_policy = data.aws_iam_policy_document.assume-role.json
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
 
 # CloudWatch Log

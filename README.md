@@ -12,22 +12,70 @@ The Lambda function used to use the SCIM endpoints (hence its name, _moj-terrafo
 module "scim" {
   source                = "github.com/ministryofjustice/moj-terraform-scim-github"
   github_organisation   = "ministryofjustice"
-  github_token          = "${github_token}"
+  github_token          = "${var.github_token}"
   sso_aws_region        = "eu-west-2"
   sso_email_suffix      = "@example.com"
-  sso_identity_store_id = "${sso_tenant_id}"
+  sso_identity_store_id = "${var.sso_tenant_id}"
   not_dry_run           = true
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+
+## Requirements
+
+| Name                                                                     | Version  |
+| ------------------------------------------------------------------------ | -------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.0   |
+| <a name="requirement_archive"></a> [archive](#requirement_archive)       | >= 2.4.0 |
+| <a name="requirement_aws"></a> [aws](#requirement_aws)                   | >= 5.0.0 |
+| <a name="requirement_external"></a> [external](#requirement_external)    | >= 2.3.0 |
+
+## Providers
+
+| Name                                                            | Version  |
+| --------------------------------------------------------------- | -------- |
+| <a name="provider_archive"></a> [archive](#provider_archive)    | >= 2.4.0 |
+| <a name="provider_aws"></a> [aws](#provider_aws)                | >= 5.0.0 |
+| <a name="provider_external"></a> [external](#provider_external) | >= 2.3.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name                                                                                                                                             | Type        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| [aws_cloudwatch_event_rule.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule)           | resource    |
+| [aws_cloudwatch_event_target.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target)       | resource    |
+| [aws_cloudwatch_log_group.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group)             | resource    |
+| [aws_iam_policy.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy)                                 | resource    |
+| [aws_iam_role.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)                                     | resource    |
+| [aws_iam_role_policy_attachment.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource    |
+| [aws_lambda_function.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function)                       | resource    |
+| [aws_lambda_permission.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission)                   | resource    |
+| [archive_file.function](https://registry.terraform.io/providers/hashicorp/archive/latest/docs/data-sources/file)                                 | data source |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity)                    | data source |
+| [aws_iam_policy_document.assume-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document)        | data source |
+| [aws_iam_policy_document.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document)            | data source |
+| [aws_kms_alias.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_alias)                                 | data source |
+| [external_external.node_modules](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external)                   | data source |
+
 ## Inputs
 
-| Name                  | Description                                                                    | Type   | Default | Required |
-| --------------------- | ------------------------------------------------------------------------------ | ------ | ------- | -------- |
-| github_organisation   | GitHub organisation to sync SSO groups and members from                        | string | n/a     | yes      |
-| github_token          | GitHub token to perform API calls. Must have the following scopes: read:org    | string | n/a     | yes      |
-| sso_aws_region        | Region that AWS SSO is configured in                                           | string | n/a     | yes      |
-| sso_email_suffix      | Email suffix to use in AWS SSO                                                 | string | n/a     | yes      |
-| sso_identity_store_id | AWS SSO Identity Store ID. Available from the AWS SSO Identity Source settings | string | n/a     | yes      |
-| not_dry_run           | Whether this Lambda function is or is _not_ a dry-run                          | string | false   | no       |
-| tags                  | Tags to apply to resources, where applicable                                   | map    | {}      | no       |
+| Name                                                                                             | Description                                                                                                    | Type       | Default | Required |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------- | :------: |
+| <a name="input_github_organisation"></a> [github_organisation](#input_github_organisation)       | GitHub organisation to sync SSO groups and members from                                                        | `string`   | n/a     |   yes    |
+| <a name="input_github_token"></a> [github_token](#input_github_token)                            | GitHub token to perform API calls. Must have the following scopes: read:org                                    | `string`   | n/a     |   yes    |
+| <a name="input_not_dry_run"></a> [not_dry_run](#input_not_dry_run)                               | Whether this is a dry run Lambda or not                                                                        | `string`   | `false` |    no    |
+| <a name="input_sso_aws_region"></a> [sso_aws_region](#input_sso_aws_region)                      | Region that AWS SSO is configured in (required for the SCIM URL)                                               | `string`   | n/a     |   yes    |
+| <a name="input_sso_email_suffix"></a> [sso_email_suffix](#input_sso_email_suffix)                | Email suffix to use in AWS SSO. It's arbitrary, but may be useful if syncing more than one GitHub organisation | `string`   | n/a     |   yes    |
+| <a name="input_sso_identity_store_id"></a> [sso_identity_store_id](#input_sso_identity_store_id) | AWS SSO Identity Store ID. Available from the AWS SSO Identity Source settings                                 | `string`   | n/a     |   yes    |
+| <a name="input_tags"></a> [tags](#input_tags)                                                    | Tags to apply to resources, where applicable                                                                   | `map(any)` | `{}`    |    no    |
+
+## Outputs
+
+No outputs.
+
+<!-- END_TF_DOCS -->
