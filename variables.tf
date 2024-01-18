@@ -9,6 +9,32 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "enable_aad_sync" {
+  type        = bool
+  description = "Set to true to sync AAD groups and users"
+  default     = false
+}
+variable "azure_application_id" {
+  type        = string
+  description = "AzureAD application to retrieve users and groups. Must Have the following permissions: Group.Read.All, User.Read"
+  sensitive   = true
+  default     = null
+}
+
+variable "azure_application_secret" {
+  type        = string
+  description = "AzureAD application secret to retrieve users and groups"
+  sensitive   = true
+  default     = null
+}
+
+variable "azure_tenant_id" {
+  type        = string
+  description = "AzureAD tenant to retrieve users and groups"
+  sensitive   = true
+  default     = null
+}
+
 variable "sso_aws_region" {
   type        = string
   description = "Region that AWS SSO is configured in (required for the SCIM URL)"
