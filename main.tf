@@ -130,6 +130,10 @@ resource "aws_lambda_function" "default" {
   environment {
     variables = {
       GITHUB_ORGANISATION   = var.github_organisation
+      ENABLE_AAD_SYNC       = var.enable_aad_sync && len(coalesce(var.azure_application_id, var.azure_application_secret, var.azure_tenant_id)) == 3 ? true : false # Don't sync if any of the AAD auth values are unset
+      AAD_APP_ID            = try(var.azure_application_id, "unset")
+      AAD_APP_SECRET        = try(var.azure_application_secret, "unset")
+      AAD_TENANT_ID         = try(var.azure_tenant_id, "unset")
       GITHUB_TOKEN          = var.github_token
       SSO_AWS_REGION        = var.sso_aws_region
       SSO_EMAIL_SUFFIX      = var.sso_email_suffix
