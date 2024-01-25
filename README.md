@@ -79,3 +79,20 @@ No modules.
 No outputs.
 
 <!-- END_TF_DOCS -->
+
+## Running the function locally
+
+To run the function locally add the following line to the end of the `index.js` file:
+
+```
+(async function() { await module.exports.handler() })()
+```
+
+From the function folder, ensure you have the correct version of node installed and run `npm install`.
+Set your AWS root account credentials and then run the fuction with:
+
+```
+GITHUB_ORGANISATION=ministryofjustice GITHUB_TOKEN=<your token> SSO_AWS_REGION=eu-west-2 SSO_EMAIL_SUFFIX='@digital.justice.gov.uk' SSO_IDENTITY_STORE_ID=<the ID from console> node index.js
+```
+
+Replacing with an appropriate GitHub token etc.
