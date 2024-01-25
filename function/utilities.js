@@ -149,20 +149,32 @@ function sendDeleteCommand (type, parameters) {
   return identitystoreClient.send(command)
 }
 
-async function getIdentityStoreGroupMemberships (groupId) {
-  const parameters = {
-    IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
-    GroupId: groupId
-  }
-  const command = new ListGroupMembershipsCommand(parameters)
-  const response = await identitystoreClient.send(command)
+async function getIdentityStoreGroupMemberships(groupId) {
+    const parameters = {
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+        GroupId: groupId
+    };
 
-  return response.GroupMemberships.map((membership) => {
-    return {
-      userId: membership.MemberId.UserId,
-      membershipId: membership.MembershipId
+    const command = new ListGroupMembershipsCommand(parameters);
+
+    async function makeApiCall() {
+        const response = await identitystoreClient.send(command);
+        return response.GroupMemberships.map((membership) => ({
+            userId: membership.MemberId.UserId,
+            membershipId: membership.MembershipId
+        }));
     }
-  })
+
+    try {
+        return await makeApiCall();
+    } catch (error) {
+        if (error instanceof ThrottlingException) {
+            const secondsToWait = Number(error.RetryAfterSeconds);
+            await new Promise(resolve => setTimeout(resolve, secondsToWait));
+            return await makeApiCall();
+        }
+        throw new Error(error);
+    }
 }
 
 // Reconciler
