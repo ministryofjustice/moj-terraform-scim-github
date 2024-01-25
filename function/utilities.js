@@ -155,14 +155,25 @@ async function getIdentityStoreGroupMemberships (groupId) {
     GroupId: groupId
   }
   const command = new ListGroupMembershipsCommand(parameters)
-  const response = await identitystoreClient.send(command)
-
-  return response.GroupMemberships.map((membership) => {
-    return {
-      userId: membership.MemberId.UserId,
-      membershipId: membership.MembershipId
-    }
-  })
+  try {
+    const response = await identitystoreClient.send(command)
+    return response.GroupMemberships.map((membership) => {
+      return {
+        userId: membership.MemberId.UserId,
+        membershipId: membership.MembershipId
+      }
+    })
+  } catch (ThrottlingException) {
+    const secondsToWait = Number(ThrottlingException.RetryAfterSeconds)
+    await new Promise(resolve => setTimeout(resolve, secondsToWait))
+    const response = await identitystoreClient.send(command)
+    return response.GroupMemberships.map((membership) => {
+      return {
+        userId: membership.MemberId.UserId,
+        membershipId: membership.MembershipId
+      }
+    })
+  }
 }
 
 // Reconciler
