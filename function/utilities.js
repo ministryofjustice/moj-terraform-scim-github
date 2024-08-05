@@ -300,6 +300,17 @@ async function sync (type, payload) {
 
   if (payload.delete.length) {
     for (const needsDeleting of payload.delete) {
+      // Don't delete users that end with '@justice.gov.uk' [EntraID emails]
+      if (type === 'users' && needsDeleting.name && needsDeleting.name.endsWith('@justice.gov.uk')) {
+        console.log(`Skipping deletion of user with email: ${needsDeleting.name}`)
+        continue;
+      }
+
+      // Don't delete groups that start with 'entraid-aws-identitycenter-' [EntraID groups]
+      if (type === 'groups' && needsDeleting.name && needsDeleting.name.startsWith('entraid-aws-identitycenter-')) {
+        console.log(`Skipping deletion of group with name: ${needsDeleting.name}`)
+        continue;
+      }
       const parameters = generateParametersForTypeAction(type, 'delete', needsDeleting)
 
       console.log(generateMessage('delete', type, needsDeleting, JSON.stringify(parameters)))
