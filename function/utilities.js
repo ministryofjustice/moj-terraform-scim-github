@@ -300,9 +300,9 @@ async function sync (type, payload) {
 
   if (payload.delete.length) {
     for (const needsDeleting of payload.delete) {
-      // Don't delete emails that end with '@justice.gov.uk' [EntraID emails]
-      if (type === 'users' && needsDeleting.email && needsDeleting.email.endsWith('@justice.gov.uk')) {
-        console.log(`Skipping deletion of user with email: ${needsDeleting.email}`)
+      // Don't delete users that end with '@justice.gov.uk' [EntraID emails]
+      if (type === 'users' && needsDeleting.name && needsDeleting.name.endsWith('@justice.gov.uk')) {
+        console.log(`Skipping deletion of user with email: ${needsDeleting.name}`)
         continue;
       }
 
