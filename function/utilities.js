@@ -306,8 +306,8 @@ async function sync (type, payload) {
         continue;
       }
 
-      // Don't delete groups that start with 'entraid-aws-identitycenter-' [EntraID groups]
-      if (type === 'groups' && needsDeleting.name && needsDeleting.name.startsWith('entraid-aws-identitycenter-')) {
+      // Don't delete groups that start with 'azure-aws-sso-' [EntraID groups]
+      if (type === 'groups' && needsDeleting.name && needsDeleting.name.startsWith('azure-aws-sso-')) {
         console.log(`Skipping deletion of group with name: ${needsDeleting.name}`)
         continue;
       }
