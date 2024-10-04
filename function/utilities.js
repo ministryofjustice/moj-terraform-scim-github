@@ -87,7 +87,8 @@ async function getGitHubOrganisationTeamsAndMemberships () {
 function identityStoreUserMap (user) {
   return {
     id: user.UserId,
-    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, '')
+    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, ''),
+    Emails: user.Emails // Capture Emails for later checks
   }
 }
 
@@ -105,7 +106,13 @@ async function getIdentityStoreValuesByType (type) {
 
   const list = []
 
-  for await (const page of paginator(awsPaginatorConfig, { IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID })) {
+  // Include 'Emails' when fetching user details
+  const params = {
+    IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+    ...(type === 'users' && { AttributesToGet: ['UserName', 'Emails'] }) // Fetch 'Emails' for users
+  }
+
+  for await (const page of paginator(awsPaginatorConfig, params)) {
     const values = [...page[key]].map(mapper)
     list.push(...values)
   }
@@ -300,9 +307,9 @@ async function sync (type, payload) {
 
   if (payload.delete.length) {
     for (const needsDeleting of payload.delete) {
-      // Don't delete users that end with '@justice.gov.uk' [EntraID emails]
-      if (type === 'users' && needsDeleting.name && needsDeleting.name.endsWith('@justice.gov.uk')) {
-        console.log(`Skipping deletion of user with email: ${needsDeleting.name}`)
+      // Don't delete users with an 'EntraId' email type
+      if (type === 'users' && needsDeleting.Emails && needsDeleting.Emails.some(email => email.Type === 'EntraId')) {
+        console.log(`Skipping deletion of user with EntraId email: ${needsDeleting.Emails.map(email => email.Value).join(', ')}`)
         continue;
       }
 
