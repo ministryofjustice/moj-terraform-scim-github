@@ -301,10 +301,11 @@ async function sync (type, payload) {
   if (payload.delete.length) {
     for (const needsDeleting of payload.delete) {
       // Don't delete users that end with '@justice.gov.uk' [EntraID emails]
-      if (type === 'users' && needsDeleting.name && needsDeleting.name.endsWith('@justice.gov.uk')) {
-        console.log(`Skipping deletion of user with email: ${needsDeleting.name}`)
+      if (type === 'users' && needsDeleting.Emails && needsDeleting.Emails.some(email => email.Type === 'EntraId')) {
+        console.log(`Skipping deletion of user with EntraId email: ${needsDeleting.Emails.map(email => email.Value).join(', ')}`)
         continue;
       }
+
 
       // Don't delete groups that start with 'azure-aws-sso-' [EntraID groups]
       if (type === 'groups' && needsDeleting.name && needsDeleting.name.startsWith('azure-aws-sso-')) {

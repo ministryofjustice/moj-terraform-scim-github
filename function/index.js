@@ -99,3 +99,5 @@ module.exports.handler = async () => {
     }
   }
 }
+
+(async function() { await module.exports.handler() })()
