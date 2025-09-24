@@ -2,7 +2,9 @@
   "name": "moj-terraform-scim-github",
   "image": "ghcr.io/ministryofjustice/devcontainer-base:latest",
   "features": {
-    "ghcr.io/devcontainers/features/node:": {},
+    "ghcr.io/devcontainers/features/node:": {
+      "version": "20" // As per main.tf aws_lambda_function.default.runtime
+    },
     "ghcr.io/devcontainers/features/github-cli:": {},
     "ghcr.io/ministryofjustice/devcontainer-feature/aws:": {},
     "ghcr.io/ministryofjustice/devcontainer-feature/terraform:": {}
