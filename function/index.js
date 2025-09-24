@@ -99,3 +99,6 @@ module.exports.handler = async () => {
     }
   }
 }
+
+// Uncomment this when running locally
+// (async function() { await module.exports.handler() })()
