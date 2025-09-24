@@ -35,9 +35,13 @@ function generateQuery () {
         teams(first: 100, after: $cursor) {
           nodes {
             slug
-            members {
+            members(first: 100) {
               nodes {
                 login
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
               }
             }
           }
@@ -56,20 +60,57 @@ async function getGitHubOrganisationTeamsAndMemberships () {
 
   const teamsWithoutAllOrgMembers = organization.teams.nodes.filter((team) => team.slug !== 'all-org-members')
 
-  const teams = teamsWithoutAllOrgMembers.map((team) => {
-    return {
+  // Handle teams with 100+ members by fetching additional member pages
+  const teams = []
+  for (const team of teamsWithoutAllOrgMembers) {
+    let allMembers = [...team.members.nodes]
+    let hasNextPage = team.members.pageInfo.hasNextPage
+    let cursor = team.members.pageInfo.endCursor
+
+    // Fetch additional member pages if needed
+    while (hasNextPage) {
+      const additionalMembersQuery = `
+        query($organization: String!, $teamSlug: String!, $cursor: String!) {
+          organization(login: $organization) {
+            team(slug: $teamSlug) {
+              members(first: 100, after: $cursor) {
+                nodes {
+                  login
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+          }
+        }
+      `
+      
+      const result = await octokit.graphql(additionalMembersQuery, {
+        organization: process.env.GITHUB_ORGANISATION,
+        teamSlug: team.slug,
+        cursor: cursor
+      })
+
+      allMembers = [...allMembers, ...result.organization.team.members.nodes]
+      hasNextPage = result.organization.team.members.pageInfo.hasNextPage
+      cursor = result.organization.team.members.pageInfo.endCursor
+    }
+
+    teams.push({
       name: team.slug.toLowerCase(),
-      members: team.members.nodes.map((user) => {
+      members: allMembers.map((user) => {
         return {
           name: user.login.toLowerCase()
         }
       })
-    }
-  })
+    })
+  }
 
-  const users = teamsWithoutAllOrgMembers.map((team) => {
-    return team.members.nodes.map((member) => {
-      return member.login.toLowerCase()
+  const users = teams.map((team) => {
+    return team.members.map((member) => {
+      return member.name
     })
   }).flat()
 
