@@ -1,20 +1,21 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
+---
 version: 2
 updates:
-  - package-ecosystem: "terraform" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "devcontainers"
+    directory: "/"
     schedule:
       interval: "daily"
       time: "09:00" # UTC
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/function" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/function"
     ignore:
       - dependency-name: "@aws-sdk/client-identitystore"
         update-types: ["version-update:semver-minor"]
+    schedule:
+      interval: "daily"
+      time: "09:00" # UTC
+  - package-ecosystem: "terraform"
+    directory: "/"
     schedule:
       interval: "daily"
       time: "09:00" # UTC
