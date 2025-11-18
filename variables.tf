@@ -3,9 +3,21 @@ variable "github_organisation" {
   description = "GitHub organisation to sync SSO groups and members from"
 }
 
-variable "github_token" {
+variable "github_app_id" {
   type        = string
-  description = "GitHub token to perform API calls. Must have the following scopes: read:org"
+  description = "GitHub App ID for authentication"
+  sensitive   = true
+}
+
+variable "github_app_private_key" {
+  type        = string
+  description = "GitHub App private key in PEM format for authentication"
+  sensitive   = true
+}
+
+variable "github_app_installation_id" {
+  type        = string
+  description = "GitHub App installation ID for the organization"
   sensitive   = true
 }
 

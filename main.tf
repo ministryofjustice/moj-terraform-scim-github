@@ -129,12 +129,14 @@ resource "aws_lambda_function" "default" {
 
   environment {
     variables = {
-      GITHUB_ORGANISATION   = var.github_organisation
-      GITHUB_TOKEN          = var.github_token
-      SSO_AWS_REGION        = var.sso_aws_region
-      SSO_EMAIL_SUFFIX      = var.sso_email_suffix
-      SSO_IDENTITY_STORE_ID = var.sso_identity_store_id
-      NOT_DRY_RUN           = var.not_dry_run
+      GITHUB_ORGANISATION        = var.github_organisation
+      GITHUB_APP_ID              = var.github_app_id
+      GITHUB_APP_PRIVATE_KEY     = var.github_app_private_key
+      GITHUB_APP_INSTALLATION_ID = var.github_app_installation_id
+      SSO_AWS_REGION             = var.sso_aws_region
+      SSO_EMAIL_SUFFIX           = var.sso_email_suffix
+      SSO_IDENTITY_STORE_ID      = var.sso_identity_store_id
+      NOT_DRY_RUN                = var.not_dry_run
     }
   }
 
