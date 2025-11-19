@@ -88,7 +88,7 @@ resource "aws_cloudwatch_log_group" "default" {
 resource "aws_cloudwatch_event_rule" "default" {
   name                = "run-${local.name}-daily"
   description         = "Scheduled event for ${local.name}"
-  schedule_expression = "cron(0 0/6 * * ? *)"
+  schedule_expression = "cron(0 */2 * * ? *)" # Every 2 hours on the hour (00:00, 02:00, 04:00, etc. UTC)
 }
 
 resource "aws_cloudwatch_event_target" "default" {
@@ -121,7 +121,7 @@ resource "aws_lambda_function" "default" {
   handler          = "index.handler"
   kms_key_arn      = data.aws_kms_alias.lambda.target_key_arn
   role             = aws_iam_role.default.arn
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs24.x"
   source_code_hash = data.archive_file.function.output_base64sha256
   timeout          = 300
   memory_size      = 512
@@ -129,12 +129,14 @@ resource "aws_lambda_function" "default" {
 
   environment {
     variables = {
-      GITHUB_ORGANISATION   = var.github_organisation
-      GITHUB_TOKEN          = var.github_token
-      SSO_AWS_REGION        = var.sso_aws_region
-      SSO_EMAIL_SUFFIX      = var.sso_email_suffix
-      SSO_IDENTITY_STORE_ID = var.sso_identity_store_id
-      NOT_DRY_RUN           = var.not_dry_run
+      GITHUB_ORGANISATION        = var.github_organisation
+      GITHUB_APP_ID              = var.github_app_id
+      GITHUB_APP_PRIVATE_KEY     = var.github_app_private_key
+      GITHUB_APP_INSTALLATION_ID = var.github_app_installation_id
+      SSO_AWS_REGION             = var.sso_aws_region
+      SSO_EMAIL_SUFFIX           = var.sso_email_suffix
+      SSO_IDENTITY_STORE_ID      = var.sso_identity_store_id
+      NOT_DRY_RUN                = var.not_dry_run
     }
   }
 

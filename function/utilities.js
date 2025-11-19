@@ -1,8 +1,19 @@
 // @octokit/core configuration
 const { Octokit } = require('@octokit/core')
 const { paginateGraphql } = require('@octokit/plugin-paginate-graphql')
+const { createAppAuth } = require('@octokit/auth-app')
+
 const OctokitWithPagination = Octokit.plugin(paginateGraphql)
-const octokit = new OctokitWithPagination({ auth: process.env.GITHUB_TOKEN })
+
+// Initialize Octokit with GitHub App authentication
+const octokit = new OctokitWithPagination({
+  authStrategy: createAppAuth,
+  auth: {
+    appId: process.env.GITHUB_APP_ID,
+    privateKey: process.env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    installationId: process.env.GITHUB_APP_INSTALLATION_ID
+  }
+})
 
 // @aws-sdk/client-identitystore configuration
 const {

@@ -4,7 +4,9 @@ module.exports.handler = async () => {
   // Check required variables are set
   [
     'GITHUB_ORGANISATION',
-    'GITHUB_TOKEN',
+    'GITHUB_APP_ID',
+    'GITHUB_APP_PRIVATE_KEY',
+    'GITHUB_APP_INSTALLATION_ID',
     'SSO_AWS_REGION',
     'SSO_EMAIL_SUFFIX',
     'SSO_IDENTITY_STORE_ID'
