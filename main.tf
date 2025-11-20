@@ -121,7 +121,7 @@ resource "aws_lambda_function" "default" {
   handler          = "index.handler"
   kms_key_arn      = data.aws_kms_alias.lambda.target_key_arn
   role             = aws_iam_role.default.arn
-  runtime          = "nodejs24.x"
+  runtime          = "nodejs22.x"
   source_code_hash = data.archive_file.function.output_base64sha256
   timeout          = 300
   memory_size      = 512
