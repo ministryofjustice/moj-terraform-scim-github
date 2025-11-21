@@ -1,6 +1,12 @@
-const utilities = require('./utilities.js')
+import {
+  getGitHubOrganisationTeamsAndMemberships,
+  getIdentityStoreValuesByType,
+  getIdentityStoreGroupMemberships,
+  reconcile,
+  sync
+} from './utilities.js';
 
-module.exports.handler = async () => {
+export const handler = async () => {
   // Check required variables are set
   [
     'GITHUB_ORGANISATION',
@@ -28,42 +34,42 @@ module.exports.handler = async () => {
   /*
     Get GitHub data (organisation teams and memberships)
   */
-  const github = await utilities.getGitHubOrganisationTeamsAndMemberships()
+  const github = await getGitHubOrganisationTeamsAndMemberships()
 
   /*
     Reconcile groups
   */
-  const identityStoreGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
+  const identityStoreGroups = await getIdentityStoreValuesByType('groups').catch(error => {
     throw new Error(error)
   })
-  const reconcileGroups = utilities.reconcile(identityStoreGroups, github.teams)
-  const syncGroups = await utilities.sync('groups', reconcileGroups).catch(error => {
+  const reconcileGroups = reconcile(identityStoreGroups, github.teams)
+  const syncGroups = await sync('groups', reconcileGroups).catch(error => {
     throw new Error(error)
   })
 
   /*
     Reconcile users
   */
-  const identityStoreUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
+  const identityStoreUsers = await getIdentityStoreValuesByType('users').catch(error => {
     throw new Error(error)
   })
-  const reconcileUsers = utilities.reconcile(identityStoreUsers, github.users)
-  const syncUsers = await utilities.sync('users', reconcileUsers).catch(error => {
+  const reconcileUsers = reconcile(identityStoreUsers, github.users)
+  const syncUsers = await sync('users', reconcileUsers).catch(error => {
     throw new Error(error)
   })
 
   /*
     Reconcile group memberships
   */
-  const refreshedGroups = await utilities.getIdentityStoreValuesByType('groups').catch(error => {
+  const refreshedGroups = await getIdentityStoreValuesByType('groups').catch(error => {
     throw new Error(error)
   })
-  const refreshedUsers = await utilities.getIdentityStoreValuesByType('users').catch(error => {
+  const refreshedUsers = await getIdentityStoreValuesByType('users').catch(error => {
     throw new Error(error)
   })
 
   for await (const group of refreshedGroups) {
-    const groupMemberships = await utilities.getIdentityStoreGroupMemberships(group.id)
+    const groupMemberships = await getIdentityStoreGroupMemberships(group.id)
     const groupMembershipsWithGroupDetails = groupMemberships.map((membership) => {
       const user = refreshedUsers.find(function (user) {
         return user.id === membership.userId
@@ -94,8 +100,8 @@ module.exports.handler = async () => {
         }
       })
 
-      const reconcileMembership = utilities.reconcile(groupMembershipsWithGroupDetails, githubTeamMembership)
-      const syncMembership = await utilities.sync('membership', reconcileMembership).catch(error => {
+      const reconcileMembership = reconcile(groupMembershipsWithGroupDetails, githubTeamMembership)
+      const syncMembership = await sync('membership', reconcileMembership).catch(error => {
         throw new Error(error)
       })
     }
