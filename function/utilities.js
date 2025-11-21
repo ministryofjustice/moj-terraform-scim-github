@@ -1,22 +1,22 @@
 // @octokit/core configuration
-const { Octokit } = require('@octokit/core')
-const { paginateGraphql } = require('@octokit/plugin-paginate-graphql')
-const { createAppAuth } = require('@octokit/auth-app')
+import {Octokit} from '@octokit/core'
+import { paginateGraphQL } from "@octokit/plugin-paginate-graphql"
+import {createAppAuth} from '@octokit/auth-app'
 
-const OctokitWithPagination = Octokit.plugin(paginateGraphql)
+const OctokitWithPagination = Octokit.plugin(paginateGraphQL)
 
 // Initialize Octokit with GitHub App authentication
 const octokit = new OctokitWithPagination({
   authStrategy: createAppAuth,
   auth: {
     appId: process.env.GITHUB_APP_ID,
-    privateKey: process.env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    privateKey: process.env.GITHUB_APP_PRIVATE_KEY,
     installationId: process.env.GITHUB_APP_INSTALLATION_ID
   }
 })
 
 // @aws-sdk/client-identitystore configuration
-const {
+import {
   IdentitystoreClient,
   CreateGroupCommand,
   CreateGroupMembershipCommand,
@@ -27,7 +27,7 @@ const {
   ListGroupMembershipsCommand,
   paginateListUsers,
   paginateListGroups
-} = require('@aws-sdk/client-identitystore')
+} from '@aws-sdk/client-identitystore'
 
 const identitystoreClient = new IdentitystoreClient({ region: process.env.SSO_AWS_REGION })
 const awsPaginatorConfig = {
@@ -66,7 +66,7 @@ function generateQuery () {
   `
 }
 
-async function getGitHubOrganisationTeamsAndMemberships () {
+export async function getGitHubOrganisationTeamsAndMemberships () {
   const { organization } = await octokit.graphql.paginate(generateQuery(), { organization: process.env.GITHUB_ORGANISATION })
 
   const teamsWithoutAllOrgMembers = organization.teams.nodes.filter((team) => team.slug !== 'all-org-members')
@@ -136,7 +136,7 @@ async function getGitHubOrganisationTeamsAndMemberships () {
 }
 
 // Identity Store
-function identityStoreUserMap (user) {
+export function identityStoreUserMap (user) {
   return {
     id: user.UserId,
     name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, ''),
@@ -144,14 +144,14 @@ function identityStoreUserMap (user) {
   }
 }
 
-function identityStoreGroupMap (group) {
+export function identityStoreGroupMap (group) {
   return {
     id: group.GroupId,
     name: group.DisplayName
   }
 }
 
-async function getIdentityStoreValuesByType (type) {
+export async function getIdentityStoreValuesByType (type) {
   const paginator = type === 'groups' ? paginateListGroups : paginateListUsers
   const mapper = type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
   const key = type === 'groups' ? 'Groups' : 'Users'
@@ -172,7 +172,7 @@ async function getIdentityStoreValuesByType (type) {
   return list
 }
 
-function sendCreateCommand (type, parameters) {
+export function sendCreateCommand (type, parameters) {
   let command
 
   if (type === 'groups') {
@@ -190,7 +190,7 @@ function sendCreateCommand (type, parameters) {
   return identitystoreClient.send(command)
 }
 
-function sendDeleteCommand (type, parameters) {
+export function sendDeleteCommand (type, parameters) {
   let command
 
   if (type === 'groups') {
@@ -208,7 +208,7 @@ function sendDeleteCommand (type, parameters) {
   return identitystoreClient.send(command)
 }
 
-async function getIdentityStoreGroupMemberships (groupId) {
+export async function getIdentityStoreGroupMemberships (groupId) {
   const parameters = {
     IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
     GroupId: groupId
@@ -236,7 +236,7 @@ async function getIdentityStoreGroupMemberships (groupId) {
 }
 
 // Reconciler
-function reconcile (original, updated) {
+export function reconcile (original, updated) {
   return {
     create: updated.filter(function (updatedItem) {
       return !original.find(function (originalItem) {
@@ -252,7 +252,7 @@ function reconcile (original, updated) {
 }
 
 // Generate parameter shape
-function generateParametersForTypeAction (type, action, data) {
+export function generateParametersForTypeAction (type, action, data) {
   if (type === 'groups') {
     if (action === 'create') {
       return {
@@ -319,7 +319,7 @@ function generateParametersForTypeAction (type, action, data) {
 }
 
 // Syncer
-function generateMessage (action, type, data, meta) {
+export function generateMessage (action, type, data, meta) {
   const message = []
 
   if (dryrun) {
@@ -340,7 +340,7 @@ function generateMessage (action, type, data, meta) {
   return message.join(' ')
 }
 
-async function sync (type, payload) {
+export async function sync (type, payload) {
   if (payload.create.length) {
     for (const needsCreating of payload.create) {
       const parameters = generateParametersForTypeAction(type, 'create', needsCreating)
@@ -383,12 +383,4 @@ async function sync (type, payload) {
       }
     }
   }
-}
-
-module.exports = {
-  getGitHubOrganisationTeamsAndMemberships,
-  getIdentityStoreValuesByType,
-  getIdentityStoreGroupMemberships,
-  reconcile,
-  sync
 }

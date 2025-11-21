@@ -15,5 +15,6 @@
     "@octokit/core": "^7.0.6",
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "octokit": "^5.0.5"
-  }
+  },
+  "type": "module"
 }
