@@ -25,3 +25,13 @@ updates:
       time: "09:00" # UTC
     cooldown:
       default-days: 7
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      action-dependencies:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
