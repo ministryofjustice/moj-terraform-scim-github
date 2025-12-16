@@ -12,7 +12,9 @@ The Lambda function used to use the SCIM endpoints (hence its name, _moj-terrafo
 
 ## Usage
 
-```
+### Basic Usage
+
+```hcl
 module "scim" {
   source                = "github.com/ministryofjustice/moj-terraform-scim-github"
   github_organisation   = "ministryofjustice"
@@ -24,6 +26,27 @@ module "scim" {
 }
 ```
 
+### With Monitoring
+
+```hcl
+module "scim" {
+  source                = "github.com/ministryofjustice/moj-terraform-scim-github"
+  github_organisation   = "ministryofjustice"
+  github_token          = "${var.github_token}"
+  sso_aws_region        = "eu-west-2"
+  sso_email_suffix      = "@example.com"
+  sso_identity_store_id = "${var.sso_tenant_id}"
+  not_dry_run           = true
+
+  # Enable monitoring with email alerts
+  enable_monitoring     = true
+  alarm_email_endpoints = ["team@example.com"]
+}
+```
+
+See [MONITORING.md](MONITORING.md) for comprehensive monitoring documentation.
+
+<!-- markdownlint-disable MD013 MD034 MD060 -->
 <!-- BEGIN_TF_DOCS -->
 
 ## Requirements
@@ -83,13 +106,16 @@ No modules.
 No outputs.
 
 <!-- END_TF_DOCS -->
+<!-- markdownlint-enable MD013 MD034 MD060 -->
 
 ## Running the function locally
 
 To run the function locally add the following line to the end of the `index.js` file:
 
 ```javascript
-(async function() { await module.exports.handler() })()
+(async function () {
+  await module.exports.handler();
+})();
 ```
 
 From the [function folder](./function/), ensure you have the correct version of node installed and run `npm install`.
