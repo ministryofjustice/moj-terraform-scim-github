@@ -6,6 +6,8 @@ updates:
     schedule:
       interval: "daily"
       time: "09:00" # UTC
+    cooldown:
+      default-days: 7
   - package-ecosystem: "npm"
     directory: "/function"
     ignore:
@@ -14,8 +16,22 @@ updates:
     schedule:
       interval: "daily"
       time: "09:00" # UTC
+    cooldown:
+      default-days: 7
   - package-ecosystem: "terraform"
     directory: "/"
     schedule:
       interval: "daily"
       time: "09:00" # UTC
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      action-dependencies:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
