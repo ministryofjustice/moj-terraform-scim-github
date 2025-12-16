@@ -119,11 +119,11 @@ export async function getGitHubOrganisationTeamsAndMemberships () {
     })
   }
 
-  const users = teams.map((team) => {
+  const users = teams.flatMap((team) => {
     return team.members.map((member) => {
       return member.name
     })
-  }).flat()
+  })
 
   return {
     teams: teams,
@@ -238,16 +238,8 @@ export async function getIdentityStoreGroupMemberships (groupId) {
 // Reconciler
 export function reconcile (original, updated) {
   return {
-    create: updated.filter(function (updatedItem) {
-      return !original.find(function (originalItem) {
-        return originalItem.name === updatedItem.name
-      })
-    }),
-    delete: original.filter(function (originalItem) {
-      return !updated.find(function (updatedItem) {
-        return updatedItem.name === originalItem.name
-      })
-    })
+    create: updated.filter((updatedItem) => !original.find((originalItem) => originalItem.name === updatedItem.name)),
+    delete: original.filter((originalItem) => !updated.find((updatedItem) => updatedItem.name === originalItem.name))
   }
 }
 

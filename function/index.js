@@ -43,7 +43,7 @@ export const handler = async () => {
     throw new Error(error)
   })
   const reconcileGroups = reconcile(identityStoreGroups, github.teams)
-  const syncGroups = await sync('groups', reconcileGroups).catch(error => {
+  const _syncGroups = await sync('groups', reconcileGroups).catch(error => {
     throw new Error(error)
   })
 
@@ -54,7 +54,7 @@ export const handler = async () => {
     throw new Error(error)
   })
   const reconcileUsers = reconcile(identityStoreUsers, github.users)
-  const syncUsers = await sync('users', reconcileUsers).catch(error => {
+  const _syncUsers = await sync('users', reconcileUsers).catch(error => {
     throw new Error(error)
   })
 
@@ -71,9 +71,7 @@ export const handler = async () => {
   for await (const group of refreshedGroups) {
     const groupMemberships = await getIdentityStoreGroupMemberships(group.id)
     const groupMembershipsWithGroupDetails = groupMemberships.map((membership) => {
-      const user = refreshedUsers.find(function (user) {
-        return user.id === membership.userId
-      })
+      const user = refreshedUsers.find((user) => user.id === membership.userId)
 
       return {
         ...user,
