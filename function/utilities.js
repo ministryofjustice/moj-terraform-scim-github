@@ -97,7 +97,7 @@ export async function getGitHubOrganisationTeamsAndMemberships () {
           }
         }
       `
-      
+
       const result = await octokit.graphql(additionalMembersQuery, {
         organization: process.env.GITHUB_ORGANISATION,
         teamSlug: team.slug,
