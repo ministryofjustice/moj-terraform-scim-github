@@ -99,7 +99,7 @@ export const handler = async () => {
       })
 
       const reconcileMembership = reconcile(groupMembershipsWithGroupDetails, githubTeamMembership)
-      const syncMembership = await sync('membership', reconcileMembership).catch(error => {
+      const _syncMembership = await sync('membership', reconcileMembership).catch(error => {
         throw new Error(error)
       })
     }

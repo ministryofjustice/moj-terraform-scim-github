@@ -36,3 +36,4 @@ jobs:
           LINTER_RULES_PATH: /
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
+          FILTER_REGEX_EXCLUDE: .*\.devcontainer/.*

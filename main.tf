@@ -80,6 +80,7 @@ resource "aws_iam_role" "default" {
 # CloudWatch Log
 #checkov:skip=CKV_AWS_338:30 day retention is sufficient for SCIM sync logs
 #checkov:skip=CKV_AWS_158:CloudWatch Logs encryption with KMS not required for this use case
+#trivy:ignore:AVD-AWS-0017
 resource "aws_cloudwatch_log_group" "default" {
   name              = "/aws/lambda/${local.name}"
   retention_in_days = 30
@@ -122,7 +123,10 @@ data "archive_file" "function" {
 #checkov:skip=CKV_AWS_272:Code signing not implemented for this Lambda function
 #checkov:skip=CKV_AWS_115:Concurrent execution limit not required - single scheduled invocation
 #checkov:skip=CKV_AWS_50:X-Ray tracing not required - CloudWatch Logs and metrics provide sufficient observability
+#trivy:ignore:AVD-AWS-0066
 resource "aws_lambda_function" "default" {
+  #ts:skip=AC_AWS_0486 No VPC configuration needed for this Lambda function
+  #ts:skip=AWS.LambdaFunction.Logging.0470 - CloudWatch Logs and metrics provide sufficient observability
   filename         = data.archive_file.function.output_path
   function_name    = local.name
   handler          = "index.handler"
