@@ -37,4 +37,4 @@ jobs:
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           FILTER_REGEX_EXCLUDE: .*\.devcontainer/.*
-          JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
+          JAVASCRIPT_ES_CONFIG_FILE: eslint.config.js

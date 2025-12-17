@@ -126,7 +126,7 @@ data "archive_file" "function" {
 #trivy:ignore:AVD-AWS-0066
 resource "aws_lambda_function" "default" {
   #ts:skip=AC_AWS_0486 No VPC configuration needed for this Lambda function
-  #ts:skip=AWS.LambdaFunction.Logging.0470 - CloudWatch Logs and metrics provide sufficient observability
+  #ts:skip=AC_AWS_0485 CloudWatch Logs and metrics provide sufficient observability
   filename         = data.archive_file.function.output_path
   function_name    = local.name
   handler          = "index.handler"
