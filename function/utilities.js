@@ -1,9 +1,9 @@
 // @octokit/core configuration
-import {Octokit} from '@octokit/core'
-import { paginateGraphQL } from "@octokit/plugin-paginate-graphql"
-import {createAppAuth} from '@octokit/auth-app'
+import { Octokit } from "@octokit/core";
+import { paginateGraphQL } from "@octokit/plugin-paginate-graphql";
+import { createAppAuth } from "@octokit/auth-app";
 
-const OctokitWithPagination = Octokit.plugin(paginateGraphQL)
+const OctokitWithPagination = Octokit.plugin(paginateGraphQL);
 
 // Initialize Octokit with GitHub App authentication
 const octokit = new OctokitWithPagination({
@@ -11,9 +11,9 @@ const octokit = new OctokitWithPagination({
   auth: {
     appId: process.env.GITHUB_APP_ID,
     privateKey: process.env.GITHUB_APP_PRIVATE_KEY,
-    installationId: process.env.GITHUB_APP_INSTALLATION_ID
-  }
-})
+    installationId: process.env.GITHUB_APP_INSTALLATION_ID,
+  },
+});
 
 // @aws-sdk/client-identitystore configuration
 import {
@@ -26,20 +26,22 @@ import {
   DeleteUserCommand,
   ListGroupMembershipsCommand,
   paginateListUsers,
-  paginateListGroups
-} from '@aws-sdk/client-identitystore'
+  paginateListGroups,
+} from "@aws-sdk/client-identitystore";
 
-const identitystoreClient = new IdentitystoreClient({ region: process.env.SSO_AWS_REGION })
+const identitystoreClient = new IdentitystoreClient({
+  region: process.env.SSO_AWS_REGION,
+});
 const awsPaginatorConfig = {
   client: identitystoreClient,
-  pageSize: 100
-}
+  pageSize: 100,
+};
 
 // Generic helpers
-const dryrun = (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false')
+const dryrun = !process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === "false";
 
 // GitHub
-function generateQuery () {
+function generateQuery() {
   return `
     query paginate($cursor: String, $organization: String!) {
       organization(login: $organization) {
@@ -63,20 +65,24 @@ function generateQuery () {
         }
       }
     }
-  `
+  `;
 }
 
-export async function getGitHubOrganisationTeamsAndMemberships () {
-  const { organization } = await octokit.graphql.paginate(generateQuery(), { organization: process.env.GITHUB_ORGANISATION })
+export async function getGitHubOrganisationTeamsAndMemberships() {
+  const { organization } = await octokit.graphql.paginate(generateQuery(), {
+    organization: process.env.GITHUB_ORGANISATION,
+  });
 
-  const teamsWithoutAllOrgMembers = organization.teams.nodes.filter((team) => team.slug !== 'all-org-members')
+  const teamsWithoutAllOrgMembers = organization.teams.nodes.filter(
+    (team) => team.slug !== "all-org-members",
+  );
 
   // Handle teams with 100+ members by fetching additional member pages
-  const teams = []
+  const teams = [];
   for (const team of teamsWithoutAllOrgMembers) {
-    let allMembers = [...team.members.nodes]
-    let hasNextPage = team.members.pageInfo.hasNextPage
-    let cursor = team.members.pageInfo.endCursor
+    let allMembers = [...team.members.nodes];
+    let hasNextPage = team.members.pageInfo.hasNextPage;
+    let cursor = team.members.pageInfo.endCursor;
 
     // Fetch additional member pages if needed
     while (hasNextPage) {
@@ -96,254 +102,276 @@ export async function getGitHubOrganisationTeamsAndMemberships () {
             }
           }
         }
-      `
+      `;
 
       const result = await octokit.graphql(additionalMembersQuery, {
         organization: process.env.GITHUB_ORGANISATION,
         teamSlug: team.slug,
-        cursor: cursor
-      })
+        cursor: cursor,
+      });
 
-      allMembers = [...allMembers, ...result.organization.team.members.nodes]
-      hasNextPage = result.organization.team.members.pageInfo.hasNextPage
-      cursor = result.organization.team.members.pageInfo.endCursor
+      allMembers = [...allMembers, ...result.organization.team.members.nodes];
+      hasNextPage = result.organization.team.members.pageInfo.hasNextPage;
+      cursor = result.organization.team.members.pageInfo.endCursor;
     }
 
     teams.push({
       name: team.slug.toLowerCase(),
       members: allMembers.map((user) => {
         return {
-          name: user.login.toLowerCase()
-        }
-      })
-    })
+          name: user.login.toLowerCase(),
+        };
+      }),
+    });
   }
 
   const users = teams.flatMap((team) => {
     return team.members.map((member) => {
-      return member.name
-    })
-  })
+      return member.name;
+    });
+  });
 
   return {
     teams: teams,
     users: [...new Set(users)].map((username) => {
       return {
-        name: username.toLowerCase()
-      }
-    })
-  }
+        name: username.toLowerCase(),
+      };
+    }),
+  };
 }
 
 // Identity Store
-export function identityStoreUserMap (user) {
+export function identityStoreUserMap(user) {
   return {
     id: user.UserId,
-    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, ''),
-    Emails: user.Emails // Capture Emails for later checks
-  }
+    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, ""),
+    Emails: user.Emails, // Capture Emails for later checks
+  };
 }
 
-export function identityStoreGroupMap (group) {
+export function identityStoreGroupMap(group) {
   return {
     id: group.GroupId,
-    name: group.DisplayName
-  }
+    name: group.DisplayName,
+  };
 }
 
-export async function getIdentityStoreValuesByType (type) {
-  const paginator = type === 'groups' ? paginateListGroups : paginateListUsers
-  const mapper = type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
-  const key = type === 'groups' ? 'Groups' : 'Users'
+export async function getIdentityStoreValuesByType(type) {
+  const paginator = type === "groups" ? paginateListGroups : paginateListUsers;
+  const mapper =
+    type === "groups" ? identityStoreGroupMap : identityStoreUserMap;
+  const key = type === "groups" ? "Groups" : "Users";
 
-  const list = []
+  const list = [];
 
   // Include 'Emails' when fetching user details
   const params = {
     IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
-    ...(type === 'users' && { AttributesToGet: ['UserName', 'Emails'] }) // Fetch 'Emails' for users
-  }
+    ...(type === "users" && { AttributesToGet: ["UserName", "Emails"] }), // Fetch 'Emails' for users
+  };
 
   for await (const page of paginator(awsPaginatorConfig, params)) {
-    const values = [...page[key]].map(mapper)
-    list.push(...values)
+    const values = [...page[key]].map(mapper);
+    list.push(...values);
   }
 
-  return list
+  return list;
 }
 
-export function sendCreateCommand (type, parameters) {
-  let command
+export function sendCreateCommand(type, parameters) {
+  let command;
 
-  if (type === 'groups') {
-    command = new CreateGroupCommand(parameters)
+  if (type === "groups") {
+    command = new CreateGroupCommand(parameters);
   }
 
-  if (type === 'users') {
-    command = new CreateUserCommand(parameters)
+  if (type === "users") {
+    command = new CreateUserCommand(parameters);
   }
 
-  if (type === 'membership') {
-    command = new CreateGroupMembershipCommand(parameters)
+  if (type === "membership") {
+    command = new CreateGroupMembershipCommand(parameters);
   }
 
-  return identitystoreClient.send(command)
+  return identitystoreClient.send(command);
 }
 
-export function sendDeleteCommand (type, parameters) {
-  let command
+export function sendDeleteCommand(type, parameters) {
+  let command;
 
-  if (type === 'groups') {
-    command = new DeleteGroupCommand(parameters)
+  if (type === "groups") {
+    command = new DeleteGroupCommand(parameters);
   }
 
-  if (type === 'users') {
-    command = new DeleteUserCommand(parameters)
+  if (type === "users") {
+    command = new DeleteUserCommand(parameters);
   }
 
-  if (type === 'membership') {
-    command = new DeleteGroupMembershipCommand(parameters)
+  if (type === "membership") {
+    command = new DeleteGroupMembershipCommand(parameters);
   }
 
-  return identitystoreClient.send(command)
+  return identitystoreClient.send(command);
 }
 
-export async function getIdentityStoreGroupMemberships (groupId) {
+export async function getIdentityStoreGroupMemberships(groupId) {
   const parameters = {
     IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
-    GroupId: groupId
-  }
-  const command = new ListGroupMembershipsCommand(parameters)
+    GroupId: groupId,
+  };
+  const command = new ListGroupMembershipsCommand(parameters);
   try {
-    const response = await identitystoreClient.send(command)
+    const response = await identitystoreClient.send(command);
     return response.GroupMemberships.map((membership) => {
       return {
         userId: membership.MemberId.UserId,
-        membershipId: membership.MembershipId
-      }
-    })
+        membershipId: membership.MembershipId,
+      };
+    });
   } catch (ThrottlingException) {
-    const secondsToWait = Number(ThrottlingException.RetryAfterSeconds)
-    await new Promise(resolve => setTimeout(resolve, secondsToWait))
-    const response = await identitystoreClient.send(command)
+    const secondsToWait = Number(ThrottlingException.RetryAfterSeconds);
+    await new Promise((resolve) => setTimeout(resolve, secondsToWait));
+    const response = await identitystoreClient.send(command);
     return response.GroupMemberships.map((membership) => {
       return {
         userId: membership.MemberId.UserId,
-        membershipId: membership.MembershipId
-      }
-    })
+        membershipId: membership.MembershipId,
+      };
+    });
   }
 }
 
 // Reconciler
-export function reconcile (original, updated) {
+export function reconcile(original, updated) {
   return {
-    create: updated.filter((updatedItem) => !original.find((originalItem) => originalItem.name === updatedItem.name)),
-    delete: original.filter((originalItem) => !updated.find((updatedItem) => updatedItem.name === originalItem.name))
-  }
+    create: updated.filter(
+      (updatedItem) =>
+        !original.find(
+          (originalItem) => originalItem.name === updatedItem.name,
+        ),
+    ),
+    delete: original.filter(
+      (originalItem) =>
+        !updated.find((updatedItem) => updatedItem.name === originalItem.name),
+    ),
+  };
 }
 
 // Generate parameter shape
-export function generateParametersForTypeAction (type, action, data) {
-  if (type === 'groups') {
-    if (action === 'create') {
+export function generateParametersForTypeAction(type, action, data) {
+  if (type === "groups") {
+    if (action === "create") {
       return {
         DisplayName: data.name,
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
-    if (action === 'delete') {
+    if (action === "delete") {
       return {
         GroupId: data.id,
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
   }
 
-  if (type === 'users') {
-    if (action === 'create') {
-      const name = `${data.name}${process.env.SSO_EMAIL_SUFFIX}`
+  if (type === "users") {
+    if (action === "create") {
+      const name = `${data.name}${process.env.SSO_EMAIL_SUFFIX}`;
 
       return {
         UserName: name,
         DisplayName: name,
         Name: {
           FamilyName: name,
-          GivenName: name
+          GivenName: name,
         },
         Emails: [
           {
             Primary: true,
-            Type: 'work',
-            Value: name
-          }
+            Type: "work",
+            Value: name,
+          },
         ],
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
-    if (action === 'delete') {
+    if (action === "delete") {
       return {
         UserId: data.id,
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
   }
 
-  if (type === 'membership') {
-    if (action === 'create') {
+  if (type === "membership") {
+    if (action === "create") {
       return {
         GroupId: data.group.id,
         MemberId: {
-          UserId: data.id
+          UserId: data.id,
         },
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
-    if (action === 'delete') {
+    if (action === "delete") {
       return {
         MembershipId: data.membershipId,
-        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID
-      }
+        IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
+      };
     }
   }
 
-  throw new Error(`Parameters not generated: type "${type}" action "${action}" not valid`)
+  throw new Error(
+    `Parameters not generated: type "${type}" action "${action}" not valid`,
+  );
 }
 
 // Syncer
-export function generateMessage (action, type, data, meta) {
-  const message = []
+export function generateMessage(action, type, data, meta) {
+  const message = [];
 
   if (dryrun) {
-    message.push('DRYRUN:')
+    message.push("DRYRUN:");
   }
 
-  message.push(`[${action}]`)
-  message.push(`[${type}]`)
+  message.push(`[${action}]`);
+  message.push(`[${type}]`);
 
-  if (type === 'membership') {
-    message.push(`[${data.name} <=> ${data.group.name}]`)
+  if (type === "membership") {
+    message.push(`[${data.name} <=> ${data.group.name}]`);
   } else {
-    message.push(`[${data.name}]`)
+    message.push(`[${data.name}]`);
   }
 
-  message.push(meta)
+  message.push(meta);
 
-  return message.join(' ')
+  return message.join(" ");
 }
 
-export async function sync (type, payload) {
+export async function sync(type, payload) {
   if (payload.create.length) {
     for (const needsCreating of payload.create) {
-      const parameters = generateParametersForTypeAction(type, 'create', needsCreating)
+      const parameters = generateParametersForTypeAction(
+        type,
+        "create",
+        needsCreating,
+      );
 
-      console.log(generateMessage('create', type, needsCreating, JSON.stringify(parameters)))
+      console.log(
+        generateMessage(
+          "create",
+          type,
+          needsCreating,
+          JSON.stringify(parameters),
+        ),
+      );
 
       if (!dryrun) {
         try {
-          await sendCreateCommand(type, parameters)
+          await sendCreateCommand(type, parameters);
         } catch (error) {
-          console.log('[error]', error)
+          console.log("[error]", error);
         }
       }
     }
@@ -352,25 +380,48 @@ export async function sync (type, payload) {
   if (payload.delete.length) {
     for (const needsDeleting of payload.delete) {
       // Don't delete users with an 'EntraId' email type
-      if (type === 'users' && needsDeleting.Emails && needsDeleting.Emails.some(email => email.Type === 'EntraId')) {
-        console.log(`Skipping deletion of user with EntraId email: ${needsDeleting.Emails.map(email => email.Value).join(', ')}`)
+      if (
+        type === "users" &&
+        needsDeleting.Emails &&
+        needsDeleting.Emails.some((email) => email.Type === "EntraId")
+      ) {
+        console.log(
+          `Skipping deletion of user with EntraId email: ${needsDeleting.Emails.map((email) => email.Value).join(", ")}`,
+        );
         continue;
       }
 
       // Don't delete groups that start with 'azure-aws-sso-' [EntraID groups]
-      if (type === 'groups' && needsDeleting.name && needsDeleting.name.startsWith('azure-aws-sso-')) {
-        console.log(`Skipping deletion of group with name: ${needsDeleting.name}`)
+      if (
+        type === "groups" &&
+        needsDeleting.name &&
+        needsDeleting.name.startsWith("azure-aws-sso-")
+      ) {
+        console.log(
+          `Skipping deletion of group with name: ${needsDeleting.name}`,
+        );
         continue;
       }
-      const parameters = generateParametersForTypeAction(type, 'delete', needsDeleting)
+      const parameters = generateParametersForTypeAction(
+        type,
+        "delete",
+        needsDeleting,
+      );
 
-      console.log(generateMessage('delete', type, needsDeleting, JSON.stringify(parameters)))
+      console.log(
+        generateMessage(
+          "delete",
+          type,
+          needsDeleting,
+          JSON.stringify(parameters),
+        ),
+      );
 
       if (!dryrun) {
         try {
-          await sendDeleteCommand(type, parameters)
+          await sendDeleteCommand(type, parameters);
         } catch (error) {
-          console.log('[error]', error)
+          console.log("[error]", error);
         }
       }
     }

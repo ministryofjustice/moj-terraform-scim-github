@@ -1,8 +1,6 @@
 {
   "threshold": 0,
   "reporters": ["html", "console"],
-  "ignore": [
-    "**/MONITORING.md"
-  ],
+  "ignore": ["**/MONITORING.md"],
   "absolute": true
 }
