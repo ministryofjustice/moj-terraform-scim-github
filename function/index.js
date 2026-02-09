@@ -8,7 +8,7 @@ import {
 
 export const handler = async () => {
   // Check required variables are set
-  [
+  ;[
     "GITHUB_ORGANISATION",
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",
@@ -32,7 +32,9 @@ export const handler = async () => {
     console.log("Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)")
   }
 
-  const github = await getGitHubOrganisationTeamsAndMemberships(gitHubTeamsIgnoreList)
+  const github = await getGitHubOrganisationTeamsAndMemberships(
+    gitHubTeamsIgnoreList,
+  )
 
   // Reconcile groups
   const identityStoreGroups = await getIdentityStoreValuesByType("groups")
@@ -86,10 +88,7 @@ export const handler = async () => {
         groupMembershipsWithGroupDetails,
         githubTeamMembership,
       )
-      await sync(
-        "membership",
-        reconcileMembership,
-      )
+      await sync("membership", reconcileMembership)
     }
   }
 }
