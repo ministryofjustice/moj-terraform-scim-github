@@ -68,13 +68,13 @@ function generateQuery() {
   `;
 }
 
-export async function getGitHubOrganisationTeamsAndMemberships() {
+export async function getGitHubOrganisationTeamsAndMemberships(gitHubTeamsIgnoreList) {
   const { organization } = await octokit.graphql.paginate(generateQuery(), {
     organization: process.env.GITHUB_ORGANISATION,
   });
 
   const teamsWithoutAllOrgMembers = organization.teams.nodes.filter(
-    (team) => team.slug !== "all-org-members",
+    (team) => !gitHubTeamsIgnoreList.includes(team.slug),
   );
 
   // Handle teams with 100+ members by fetching additional member pages
