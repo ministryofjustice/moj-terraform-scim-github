@@ -92,7 +92,7 @@ resource "aws_cloudwatch_log_group" "default" {
 resource "aws_cloudwatch_event_rule" "default" {
   name                = "run-${local.name}-daily"
   description         = "Scheduled event for ${local.name}"
-  schedule_expression = "cron(0 */2 * * ? *)" # Every 2 hours on the hour (00:00, 02:00, 04:00, etc. UTC)
+  schedule_expression = "cron(0 */6 * * ? *)" # Every 6 hours on the hour (00:00, 06:00, 12:00, etc. UTC)
 }
 
 resource "aws_cloudwatch_event_target" "default" {
