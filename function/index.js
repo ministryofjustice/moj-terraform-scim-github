@@ -27,7 +27,7 @@ export const handler = async () => {
     }
   })
 
-  const gitHubTeamsIgnoreList = ["all-org-mebmers", "business-units"]
+  const gitHubTeamsIgnoreList = ["all-org-members", "business-units"]
   if (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === "false") {
     console.log("Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)")
   }
