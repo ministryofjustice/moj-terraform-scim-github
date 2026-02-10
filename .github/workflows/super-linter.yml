@@ -38,3 +38,4 @@ jobs:
           VALIDATE_BIOME_LINT: false
           FILTER_REGEX_EXCLUDE: .*\.devcontainer/.*
           JAVASCRIPT_ES_CONFIG_FILE: eslint.config.js
+          PRETTIER_COMMAND_OPTIONS: --config ./.prettierrc.yaml
