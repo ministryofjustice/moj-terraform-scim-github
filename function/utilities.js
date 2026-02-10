@@ -30,7 +30,8 @@ function generateQuery() {
 }
 
 export async function getGitHubOrganisationTeamsAndMemberships(
-  gitHubTeamsIgnoreList, octokit
+  gitHubTeamsIgnoreList,
+  octokit,
 ) {
   const { organization } = await octokit.graphql.paginate(generateQuery(), {
     organization: process.env.GITHUB_ORGANISATION,
@@ -120,8 +121,15 @@ export function identityStoreGroupMap(group) {
   }
 }
 
-export async function getIdentityStoreValuesByType(type, identitystore, identitystoreClient) {
-  const paginator = type === 'groups' ? identitystore.paginateListGroups : identitystore.paginateListUsers
+export async function getIdentityStoreValuesByType(
+  type,
+  identitystore,
+  identitystoreClient,
+) {
+  const paginator =
+    type === 'groups'
+      ? identitystore.paginateListGroups
+      : identitystore.paginateListUsers
   const mapper =
     type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
   const key = type === 'groups' ? 'Groups' : 'Users'
@@ -134,10 +142,13 @@ export async function getIdentityStoreValuesByType(type, identitystore, identity
     ...(type === 'users' && { AttributesToGet: ['UserName', 'Emails'] }), // Fetch 'Emails' for users
   }
 
-  for await (const page of paginator({
-    client: identitystoreClient,
-    pageSize: 100,
-  }, params)) {
+  for await (const page of paginator(
+    {
+      client: identitystoreClient,
+      pageSize: 100,
+    },
+    params,
+  )) {
     const values = [...page[key]].map(mapper)
     list.push(...values)
   }
@@ -145,7 +156,12 @@ export async function getIdentityStoreValuesByType(type, identitystore, identity
   return list
 }
 
-export function sendCreateCommand(type, parameters, identitystore, identitystoreClient) {
+export function sendCreateCommand(
+  type,
+  parameters,
+  identitystore,
+  identitystoreClient,
+) {
   let command
 
   if (type === 'groups') {
@@ -163,7 +179,12 @@ export function sendCreateCommand(type, parameters, identitystore, identitystore
   return identitystoreClient.send(command)
 }
 
-export function sendDeleteCommand(type, parameters, identitystore, identitystoreClient) {
+export function sendDeleteCommand(
+  type,
+  parameters,
+  identitystore,
+  identitystoreClient,
+) {
   let command
 
   if (type === 'groups') {
@@ -181,7 +202,10 @@ export function sendDeleteCommand(type, parameters, identitystore, identitystore
   return identitystoreClient.send(command)
 }
 
-export async function getIdentityStoreGroupMemberships(groupId, identitystoreClient) {
+export async function getIdentityStoreGroupMemberships(
+  groupId,
+  identitystoreClient,
+) {
   const parameters = {
     IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
     GroupId: groupId,

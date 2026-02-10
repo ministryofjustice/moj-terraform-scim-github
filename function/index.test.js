@@ -1,4 +1,3 @@
-import { IdentitystoreClient } from '@aws-sdk/client-identitystore'
 import { test, expect, describe, jest } from '@jest/globals'
 
 import { handler, scimGitHubToAWSIdentityStore } from './index.js'
@@ -25,37 +24,54 @@ describe('SCIM Job', () => {
 
   test('Smoke Test', async () => {
     const identitystore = {
-      IdentitystoreClient: class { },
-      CreateGroupCommand: class { },
-      CreateGroupMembershipCommand: class { },
-      CreateUserCommand: class { },
-      DeleteGroupCommand: class { },
-      DeleteGroupMembershipCommand: class { },
-      DeleteUserCommand: class { },
-      ListGroupMembershipsCommand: class { },
+      IdentitystoreClient: class {},
+      CreateGroupCommand: class {},
+      CreateGroupMembershipCommand: class {},
+      CreateUserCommand: class {},
+      DeleteGroupCommand: class {},
+      DeleteGroupMembershipCommand: class {},
+      DeleteUserCommand: class {},
+      ListGroupMembershipsCommand: class {},
       paginateListUsers: jest.fn(() =>
-        (async function*() {
+        (async function* () {
           yield { Users: [] }
         })(),
       ),
       paginateListGroups: jest.fn(() =>
-        (async function*() {
+        (async function* () {
           yield { Groups: [] }
         })(),
-      )
+      ),
     }
 
     const identitystoreClient = {
-      send: jest.fn()
+      send: jest.fn(),
     }
 
     const octokit = {
       graphql: {
-        paginate: jest.fn().mockResolvedValue({ organization: { teams: { nodes: [{ slug: '', members: { nodes: [], pageInfo: { hasNextPage: false } } }], members: { nodes: [] } } } }),
+        paginate: jest.fn().mockResolvedValue({
+          organization: {
+            teams: {
+              nodes: [
+                {
+                  slug: '',
+                  members: { nodes: [], pageInfo: { hasNextPage: false } },
+                },
+              ],
+              members: { nodes: [] },
+            },
+          },
+        }),
       },
     }
 
-    await scimGitHubToAWSIdentityStore({ octokit: octokit, identitystore: identitystore, identitystoreClient: identitystoreClient, gitHubTeamsIgnoreList: [] })
+    await scimGitHubToAWSIdentityStore({
+      octokit: octokit,
+      identitystore: identitystore,
+      identitystoreClient: identitystoreClient,
+      gitHubTeamsIgnoreList: [],
+    })
   })
 
   test('Throws error when missing environment variables', async () => {

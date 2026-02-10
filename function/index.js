@@ -49,30 +49,60 @@ export const handler = async () => {
     console.log('Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)')
   }
 
-  await scimGitHubToAWSIdentityStore({ octokit: octokit, identitystore: identitystore, identitystoreClient: identitystoreClient, gitHubTeamsIgnoreList: ['all-org-members', 'business-units'] })
+  await scimGitHubToAWSIdentityStore({
+    octokit: octokit,
+    identitystore: identitystore,
+    identitystoreClient: identitystoreClient,
+    gitHubTeamsIgnoreList: ['all-org-members', 'business-units'],
+  })
 }
 
-export const scimGitHubToAWSIdentityStore = async ({ octokit, identitystore, identitystoreClient, gitHubTeamsIgnoreList }) => {
+export const scimGitHubToAWSIdentityStore = async ({
+  octokit,
+  identitystore,
+  identitystoreClient,
+  gitHubTeamsIgnoreList,
+}) => {
   const github = await getGitHubOrganisationTeamsAndMemberships(
-    gitHubTeamsIgnoreList, octokit
+    gitHubTeamsIgnoreList,
+    octokit,
   )
 
   // Reconcile groups
-  const identityStoreGroups = await getIdentityStoreValuesByType('groups', identitystore, identitystoreClient)
+  const identityStoreGroups = await getIdentityStoreValuesByType(
+    'groups',
+    identitystore,
+    identitystoreClient,
+  )
   const reconcileGroups = reconcile(identityStoreGroups, github.teams)
   await sync('groups', reconcileGroups)
 
   // Reconcile users
-  const identityStoreUsers = await getIdentityStoreValuesByType('users', identitystore, identitystoreClient)
+  const identityStoreUsers = await getIdentityStoreValuesByType(
+    'users',
+    identitystore,
+    identitystoreClient,
+  )
   const reconcileUsers = reconcile(identityStoreUsers, github.users)
   await sync('users', reconcileUsers)
 
   // Reconcile group memberships
-  const refreshedGroups = await getIdentityStoreValuesByType('groups', identitystore, identitystoreClient)
-  const refreshedUsers = await getIdentityStoreValuesByType('users', identitystore, identitystoreClient)
+  const refreshedGroups = await getIdentityStoreValuesByType(
+    'groups',
+    identitystore,
+    identitystoreClient,
+  )
+  const refreshedUsers = await getIdentityStoreValuesByType(
+    'users',
+    identitystore,
+    identitystoreClient,
+  )
 
   for await (const group of refreshedGroups) {
-    const groupMemberships = await getIdentityStoreGroupMemberships(group.id, identitystoreClient)
+    const groupMemberships = await getIdentityStoreGroupMemberships(
+      group.id,
+      identitystoreClient,
+    )
     const groupMembershipsWithGroupDetails = groupMemberships.map(
       (membership) => {
         const user = refreshedUsers.find(
