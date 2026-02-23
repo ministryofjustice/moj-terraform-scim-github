@@ -158,7 +158,7 @@ To run the function locally add the following line to the end of the `index.js` 
 ```
 
 From the [function folder](./function/), ensure you have the correct version of node installed and run `npm install`.
-Set your AWS root account credentials and then run the fuction with:
+Set your AWS root account credentials and then run the function with:
 
 ```bash
 GITHUB_ORGANISATION=ministryofjustice GITHUB_TOKEN="your token" SSO_AWS_REGION=eu-west-2 SSO_EMAIL_SUFFIX='@digital.justice.gov.uk' SSO_IDENTITY_STORE_ID="<the ID from console" node index.js
