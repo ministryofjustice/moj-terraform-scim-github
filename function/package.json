@@ -16,5 +16,8 @@
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "octokit": "^5.0.5"
   },
+  "overrides": {
+    "fast-xml-parser": "^5.3.8"
+  },
   "type": "module"
 }
