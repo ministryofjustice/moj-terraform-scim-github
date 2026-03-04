@@ -110,6 +110,12 @@ export const createMockIdentitystore = ({
     }
   }
 
+  class DeleteGroupMembershipCommand {
+    constructor(parameters) {
+      this.input = parameters
+    }
+  }
+
   class ListGroupMembershipsCommand {
     constructor(parameters) {
       this.input = parameters
@@ -125,7 +131,7 @@ export const createMockIdentitystore = ({
     CreateGroupMembershipCommand,
     CreateUserCommand,
     DeleteGroupCommand,
-    DeleteGroupMembershipCommand: class { },
+    DeleteGroupMembershipCommand,
     DeleteUserCommand,
     ListGroupMembershipsCommand,
     paginateListUsers: jest.fn(() =>
@@ -189,7 +195,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
       awsUsersFirst: [{ name: 'test-user-0', userId: 'test-user-0-userId' }],  // user missing
       // 👇 Second calls are after the users and groups are creted in IdentityStore
       awsGroupsSecond: ['test-team-0', 'test-team-1'],
-      awsUsersSecond: [{ name: 'test-user-1', userId: 'test-user-1-userId' }],
+      awsUsersSecond: [{ name: 'test-user-0', userId: 'test-user-0-userId' }, { name: 'test-user-1', userId: 'test-user-1-userId' }],
     })
     const mockIdentitystoreClient = createMockIdentitystoreClient({
       identitystore: mockIdentitystore,
@@ -272,6 +278,113 @@ describe('scimGitHubToAWSIdentityStore', () => {
     expect(mockIdentitystoreClient.send).toHaveBeenCalledTimes(5)
 
   })
+
+  it('deletes users, groups and memberships that exist in Identity Store and do not exist in GitHub', async () => {
+    const mockOctokit = createMockOctokit({
+      teams: [{ slug: 'test-team-0', members: ['test-user-0'] }], // missing team in GitHub
+    })
+    const mockIdentitystore = createMockIdentitystore({
+      awsGroupsFirst: ['test-team-0', 'test-team-1'],
+      awsUsersFirst: [{ name: 'test-user-0', userId: 'test-user-0-userId' }, { name: 'test-user-1', userId: 'test-user-1-userId' }],
+      // 👇 Second calls are after the users and groups are deleted in IdentityStore
+      awsGroupsSecond: ['test-team-0'],
+      awsUsersSecond: [{ name: 'test-user-0', userId: 'test-user-0-userId' }],
+    })
+    const mockIdentitystoreClient = createMockIdentitystoreClient({
+      identitystore: mockIdentitystore,
+      listGroupMembershipsFirst: [{ userId: 'test-user-0-userId', membershipId: 'test-user-0-membershipId' }, { userId: 'test-user-1-userId', membershipId: 'test-user-1-membershipId' }],
+      listGroupMembershipsSecond: [], // only one group so this shouldn't be called
+    })
+
+    await scimGitHubToAWSIdentityStore({
+      octokit: mockOctokit,
+      identitystore: mockIdentitystore,
+      identitystoreClient: mockIdentitystoreClient,
+      gitHubTeamsIgnoreList: [],
+      dryrun: false
+    })
+
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(1, expect.any(mockIdentitystore.DeleteGroupCommand))
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: expect.objectContaining({ GroupId: undefined, IdentityStoreId: 'test_identity_store_id' })
+      }))
+
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(2, expect.any(mockIdentitystore.DeleteUserCommand))
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: { IdentityStoreId: 'test_identity_store_id', UserId: 'test-user-1-userId' }
+      }),
+    )
+
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(3, expect.any(mockIdentitystore.ListGroupMembershipsCommand))
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        input: { IdentityStoreId: 'test_identity_store_id', UserId: undefined }
+      }),
+    )
+
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(4, expect.any(mockIdentitystore.DeleteGroupMembershipCommand))
+    expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        input: { IdentityStoreId: 'test_identity_store_id', MembershipId: 'test-user-1-membershipId' }
+      }),
+    )
+
+    expect(mockIdentitystoreClient.send).toHaveBeenCalledTimes(4)
+
+  })
+  //
+  // it('Ignores users and groups that exist in Identity Store and exist in GitHub', async () => {
+  //   const mockOctokit = createMockOctokit({
+  //     teams: [{ slug: 'test-team-1', members: ['test-user-1'] }],
+  //   })
+  //   const mockIdentitystore = createMockIdentitystore({
+  //     awsGroups: ['test-team-1'],
+  //     awsUsers: ['test-user-1'],
+  //   })
+  //   const mockIdentitystoreClient = createMockIdentitystoreClient({
+  //     identitystore: mockIdentitystore,
+  //     listGroupMemberships: [
+  //       { userId: 'aws-user-1', membershipId: 'mem-1' },
+  //     ],
+  //   })
+  //
+  //   await scimGitHubToAWSIdentityStore({
+  //     octokit: mockOctokit,
+  //     identitystore: mockIdentitystore,
+  //     identitystoreClient: mockIdentitystoreClient,
+  //     gitHubTeamsIgnoreList: [],
+  //     dryrun: false
+  //   })
+  //
+  //   expect(mockIdentitystoreClient.send).toHaveBeenCalledTimes(3)
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(1, expect.any(mockIdentitystore.DeleteGroupCommand))
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+  //     1,
+  //     expect.objectContaining({
+  //       input: expect.objectContaining({ GroupId: undefined, IdentityStoreId: "test_identity_store_id" })
+  //     }))
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(2, expect.any(mockIdentitystore.DeleteUserCommand))
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+  //     2,
+  //     expect.objectContaining({
+  //       input: { "IdentityStoreId": "test_identity_store_id", "UserId": undefined }
+  //     }),
+  //   )
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(3, expect.any(mockIdentitystore.ListGroupMembershipsCommand))
+  //   expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
+  //     3,
+  //     expect.objectContaining({
+  //       input: { "IdentityStoreId": "test_identity_store_id", "UserId": undefined }
+  //     }),
+  //   )
+  // })
+
 })
 
 describe('handler', () => {
