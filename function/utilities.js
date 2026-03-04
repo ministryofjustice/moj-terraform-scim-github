@@ -1,6 +1,3 @@
-// Generic helpers
-const dryrun = !process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false'
-
 // GitHub
 function generateQuery() {
   return `
@@ -130,8 +127,7 @@ export async function getIdentityStoreValuesByType(
     type === 'groups'
       ? identitystore.paginateListGroups
       : identitystore.paginateListUsers
-  const mapper =
-    type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
+  const mapper = type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
   const key = type === 'groups' ? 'Groups' : 'Users'
 
   const list = []
@@ -204,13 +200,14 @@ export function sendDeleteCommand(
 
 export async function getIdentityStoreGroupMemberships(
   groupId,
+  identitystore,
   identitystoreClient,
 ) {
   const parameters = {
     IdentityStoreId: process.env.SSO_IDENTITY_STORE_ID,
     GroupId: groupId,
   }
-  const command = new ListGroupMembershipsCommand(parameters)
+  const command = new identitystore.ListGroupMembershipsCommand(parameters)
   try {
     const response = await identitystoreClient.send(command)
     return response.GroupMemberships.map((membership) => {
@@ -318,7 +315,7 @@ export function generateParametersForTypeAction(type, action, data) {
 }
 
 // Syncer
-export function generateMessage(action, type, data, meta) {
+export function generateMessage(action, type, data, meta, dryrun) {
   const message = []
 
   if (dryrun) {
@@ -339,7 +336,7 @@ export function generateMessage(action, type, data, meta) {
   return message.join(' ')
 }
 
-export async function sync(type, payload) {
+export async function sync(type, payload, identitystore, identitystoreClient, dryrun) {
   if (payload.create.length) {
     for (const needsCreating of payload.create) {
       const parameters = generateParametersForTypeAction(
@@ -354,12 +351,13 @@ export async function sync(type, payload) {
           type,
           needsCreating,
           JSON.stringify(parameters),
+          dryrun
         ),
       )
 
       if (!dryrun) {
         try {
-          await sendCreateCommand(type, parameters)
+          await sendCreateCommand(type, parameters, identitystore, identitystoreClient)
         } catch (error) {
           console.log('[error]', error)
         }
@@ -404,12 +402,13 @@ export async function sync(type, payload) {
           type,
           needsDeleting,
           JSON.stringify(parameters),
+          dryrun
         ),
       )
 
       if (!dryrun) {
         try {
-          await sendDeleteCommand(type, parameters)
+          await sendDeleteCommand(type, parameters, identitystore, identitystoreClient)
         } catch (error) {
           console.log('[error]', error)
         }

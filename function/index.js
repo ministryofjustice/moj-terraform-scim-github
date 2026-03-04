@@ -45,7 +45,8 @@ export const handler = async () => {
     region: process.env.SSO_AWS_REGION,
   })
 
-  if (!process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false') {
+  const dryrun = !process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false'
+  if (dryrun) {
     console.log('Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)')
   }
 
@@ -54,6 +55,7 @@ export const handler = async () => {
     identitystore: identitystore,
     identitystoreClient: identitystoreClient,
     gitHubTeamsIgnoreList: ['all-org-members', 'business-units'],
+    dryrun: dryrun
   })
 }
 
@@ -62,6 +64,7 @@ export const scimGitHubToAWSIdentityStore = async ({
   identitystore,
   identitystoreClient,
   gitHubTeamsIgnoreList,
+  dryrun
 }) => {
   const github = await getGitHubOrganisationTeamsAndMemberships(
     gitHubTeamsIgnoreList,
@@ -75,7 +78,7 @@ export const scimGitHubToAWSIdentityStore = async ({
     identitystoreClient,
   )
   const reconcileGroups = reconcile(identityStoreGroups, github.teams)
-  await sync('groups', reconcileGroups)
+  await sync('groups', reconcileGroups, identitystore, identitystoreClient, dryrun)
 
   // Reconcile users
   const identityStoreUsers = await getIdentityStoreValuesByType(
@@ -84,7 +87,7 @@ export const scimGitHubToAWSIdentityStore = async ({
     identitystoreClient,
   )
   const reconcileUsers = reconcile(identityStoreUsers, github.users)
-  await sync('users', reconcileUsers)
+  await sync('users', reconcileUsers, identitystore, identitystoreClient, dryrun)
 
   // Reconcile group memberships
   const refreshedGroups = await getIdentityStoreValuesByType(
@@ -101,6 +104,7 @@ export const scimGitHubToAWSIdentityStore = async ({
   for await (const group of refreshedGroups) {
     const groupMemberships = await getIdentityStoreGroupMemberships(
       group.id,
+      identitystore,
       identitystoreClient,
     )
     const groupMembershipsWithGroupDetails = groupMemberships.map(
@@ -139,7 +143,7 @@ export const scimGitHubToAWSIdentityStore = async ({
         groupMembershipsWithGroupDetails,
         githubTeamMembership,
       )
-      await sync('membership', reconcileMembership)
+      await sync('membership', reconcileMembership, identitystore, identitystoreClient, dryrun)
     }
   }
 }
