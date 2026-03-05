@@ -107,6 +107,7 @@ export const scimGitHubToAWSIdentityStore = async ({
       identitystore,
       identitystoreClient,
     )
+
     const groupMembershipsWithGroupDetails = groupMemberships.map(
       (membership) => {
         const user = refreshedUsers.find(

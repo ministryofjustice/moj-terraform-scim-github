@@ -106,7 +106,7 @@ export async function getGitHubOrganisationTeamsAndMemberships(
 export function identityStoreUserMap(user) {
   return {
     id: user.UserId,
-    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, ''),
+    name: user.UserName.replace(process.env.SSO_EMAIL_SUFFIX, '').toLowerCase(),
     Emails: user.Emails, // Capture Emails for later checks
   }
 }
@@ -114,7 +114,7 @@ export function identityStoreUserMap(user) {
 export function identityStoreGroupMap(group) {
   return {
     id: group.GroupId,
-    name: group.DisplayName,
+    name: group.DisplayName.toLowerCase(),
   }
 }
 
