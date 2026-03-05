@@ -25,4 +25,8 @@
     "transform": {},
     "verbose": true
   }
+
+  "overrides": {
+    "fast-xml-parser": "^5.3.8"
+  },
 }
