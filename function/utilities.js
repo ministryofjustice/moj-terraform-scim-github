@@ -234,6 +234,8 @@ export async function getIdentityStoreGroupMemberships(
         }),
       )
     }
+    return memberships
+
 
   } catch (ThrottlingException) {
     console.warn(`ThrottlingException encountered when fetching memberships for group ${groupId}. Retrying after ${ThrottlingException.RetryAfterSeconds} seconds...`)

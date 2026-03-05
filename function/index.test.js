@@ -49,16 +49,6 @@ export const createMockIdentitystoreClient = ({
   return {
     send: jest.fn(async (command) => {
       if (command instanceof identitystore.ListGroupMembershipsCommand) {
-        const groupId = command.input?.GroupId
-        if (groupId && groupId in membershipsByGroupId) {
-          return {
-            GroupMemberships: membershipsByGroupId[groupId].map((m) => ({
-              MemberId: { UserId: m.userId },
-              MembershipId: m.membershipId,
-            })),
-          }
-        }
-
         callListGroupMembershipsCommandCount++
         if (callListGroupMembershipsCommandCount === 1)
           return {
@@ -250,7 +240,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
       3,
       expect.objectContaining({
         input: {
-          GroupId: undefined,
+          GroupId: 'test-team-0',
           IdentityStoreId: 'test_identity_store_id'
         }
       }
@@ -261,7 +251,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
       4,
       expect.objectContaining({
         input: {
-          GroupId: undefined,
+          GroupId: 'test-team-1',
           IdentityStoreId: 'test_identity_store_id'
         }
       }
@@ -274,7 +264,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
       5,
       expect.objectContaining({
         input: {
-          GroupId: undefined,
+          GroupId: 'test-team-1',
           IdentityStoreId: 'test_identity_store_id',
           MemberId: { UserId: 'test-user-1-userId' }
         }
@@ -314,7 +304,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
     expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        input: expect.objectContaining({ GroupId: undefined, IdentityStoreId: 'test_identity_store_id' })
+        input: expect.objectContaining({ GroupId: 'test-team-1', IdentityStoreId: 'test_identity_store_id' })
       }))
 
     expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(2, expect.any(mockIdentitystore.DeleteUserCommand))
@@ -329,7 +319,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
     expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
-        input: { IdentityStoreId: 'test_identity_store_id', UserId: undefined }
+        input: { GroupId: 'test-team-0', IdentityStoreId: 'test_identity_store_id' }
       }),
     )
 
@@ -374,7 +364,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
     expect(mockIdentitystoreClient.send).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        input: { IdentityStoreId: "test_identity_store_id", UserId: undefined }
+        input: { GroupId: 'Test-team-0', IdentityStoreId: "test_identity_store_id" }
       }),
     )
     expect(mockIdentitystoreClient.send).toHaveBeenCalledTimes(1)
