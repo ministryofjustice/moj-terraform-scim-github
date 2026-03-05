@@ -208,24 +208,63 @@ export async function getIdentityStoreGroupMemberships(
     GroupId: groupId,
   }
   const command = new identitystore.ListGroupMembershipsCommand(parameters)
+
   try {
-    const response = await identitystoreClient.send(command)
-    return response.GroupMemberships.map((membership) => {
+    let response = await identitystoreClient.send(command)
+    let memberships = response.GroupMemberships.map((membership) => {
       return {
         userId: membership.MemberId.UserId,
         membershipId: membership.MembershipId,
       }
     })
+
+    while (response.NextToken) {
+      response = await identitystoreClient.send(
+        new identitystore.ListGroupMembershipsCommand({
+          ...parameters,
+          NextToken: response.NextToken,
+        }),
+      )
+      memberships = memberships.concat(
+        response.GroupMemberships.map((membership) => {
+          return {
+            userId: membership.MemberId.UserId,
+            membershipId: membership.MembershipId,
+          }
+        }),
+      )
+    }
+
   } catch (ThrottlingException) {
+    console.warn(`ThrottlingException encountered when fetching memberships for group ${groupId}. Retrying after ${ThrottlingException.RetryAfterSeconds} seconds...`)
     const secondsToWait = Number(ThrottlingException.RetryAfterSeconds)
     await new Promise((resolve) => setTimeout(resolve, secondsToWait))
-    const response = await identitystoreClient.send(command)
-    return response.GroupMemberships.map((membership) => {
+    let response = await identitystoreClient.send(command)
+    let memberships = response.GroupMemberships.map((membership) => {
       return {
         userId: membership.MemberId.UserId,
         membershipId: membership.MembershipId,
       }
     })
+
+    while (response.NextToken) {
+      response = await identitystoreClient.send(
+        new identitystore.ListGroupMembershipsCommand({
+          ...parameters,
+          NextToken: response.NextToken,
+        }),
+      )
+      memberships = memberships.concat(
+        response.GroupMemberships.map((membership) => {
+          return {
+            userId: membership.MemberId.UserId,
+            membershipId: membership.MembershipId,
+          }
+        }),
+      )
+    }
+
+    return memberships
   }
 }
 
