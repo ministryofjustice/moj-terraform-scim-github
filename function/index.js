@@ -55,7 +55,7 @@ export const handler = async () => {
     identitystore: identitystore,
     identitystoreClient: identitystoreClient,
     gitHubTeamsIgnoreList: ['all-org-members', 'business-units'],
-    dryrun: dryrun
+    dryrun: dryrun,
   })
 }
 
@@ -64,7 +64,7 @@ export const scimGitHubToAWSIdentityStore = async ({
   identitystore,
   identitystoreClient,
   gitHubTeamsIgnoreList,
-  dryrun
+  dryrun,
 }) => {
   const github = await getGitHubOrganisationTeamsAndMemberships(
     gitHubTeamsIgnoreList,
@@ -78,7 +78,13 @@ export const scimGitHubToAWSIdentityStore = async ({
     identitystoreClient,
   )
   const reconcileGroups = reconcile(identityStoreGroups, github.teams)
-  await sync('groups', reconcileGroups, identitystore, identitystoreClient, dryrun)
+  await sync(
+    'groups',
+    reconcileGroups,
+    identitystore,
+    identitystoreClient,
+    dryrun,
+  )
 
   // Reconcile users
   const identityStoreUsers = await getIdentityStoreValuesByType(
@@ -87,7 +93,13 @@ export const scimGitHubToAWSIdentityStore = async ({
     identitystoreClient,
   )
   const reconcileUsers = reconcile(identityStoreUsers, github.users)
-  await sync('users', reconcileUsers, identitystore, identitystoreClient, dryrun)
+  await sync(
+    'users',
+    reconcileUsers,
+    identitystore,
+    identitystoreClient,
+    dryrun,
+  )
 
   // Reconcile group memberships
   const refreshedGroups = await getIdentityStoreValuesByType(
@@ -144,7 +156,13 @@ export const scimGitHubToAWSIdentityStore = async ({
         groupMembershipsWithGroupDetails,
         githubTeamMembership,
       )
-      await sync('membership', reconcileMembership, identitystore, identitystoreClient, dryrun)
+      await sync(
+        'membership',
+        reconcileMembership,
+        identitystore,
+        identitystoreClient,
+        dryrun,
+      )
     }
   }
 }

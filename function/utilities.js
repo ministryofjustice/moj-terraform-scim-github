@@ -127,7 +127,8 @@ export async function getIdentityStoreValuesByType(
     type === 'groups'
       ? identitystore.paginateListGroups
       : identitystore.paginateListUsers
-  const mapper = type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
+  const mapper =
+    type === 'groups' ? identityStoreGroupMap : identityStoreUserMap
   const key = type === 'groups' ? 'Groups' : 'Users'
 
   const list = []
@@ -235,10 +236,10 @@ export async function getIdentityStoreGroupMemberships(
       )
     }
     return memberships
-
-
   } catch (ThrottlingException) {
-    console.warn(`ThrottlingException encountered when fetching memberships for group ${groupId}. Retrying after ${ThrottlingException.RetryAfterSeconds} seconds...`)
+    console.warn(
+      `ThrottlingException encountered when fetching memberships for group ${groupId}. Retrying after ${ThrottlingException.RetryAfterSeconds} seconds...`,
+    )
     const secondsToWait = Number(ThrottlingException.RetryAfterSeconds)
     await new Promise((resolve) => setTimeout(resolve, secondsToWait))
     let response = await identitystoreClient.send(command)
@@ -377,7 +378,13 @@ export function generateMessage(action, type, data, meta, dryrun) {
   return message.join(' ')
 }
 
-export async function sync(type, payload, identitystore, identitystoreClient, dryrun) {
+export async function sync(
+  type,
+  payload,
+  identitystore,
+  identitystoreClient,
+  dryrun,
+) {
   if (payload.create.length) {
     for (const needsCreating of payload.create) {
       const parameters = generateParametersForTypeAction(
@@ -392,13 +399,18 @@ export async function sync(type, payload, identitystore, identitystoreClient, dr
           type,
           needsCreating,
           JSON.stringify(parameters),
-          dryrun
+          dryrun,
         ),
       )
 
       if (!dryrun) {
         try {
-          await sendCreateCommand(type, parameters, identitystore, identitystoreClient)
+          await sendCreateCommand(
+            type,
+            parameters,
+            identitystore,
+            identitystoreClient,
+          )
         } catch (error) {
           console.log('[error]', error)
         }
@@ -443,13 +455,18 @@ export async function sync(type, payload, identitystore, identitystoreClient, dr
           type,
           needsDeleting,
           JSON.stringify(parameters),
-          dryrun
+          dryrun,
         ),
       )
 
       if (!dryrun) {
         try {
-          await sendDeleteCommand(type, parameters, identitystore, identitystoreClient)
+          await sendDeleteCommand(
+            type,
+            parameters,
+            identitystore,
+            identitystoreClient,
+          )
         } catch (error) {
           console.log('[error]', error)
         }
