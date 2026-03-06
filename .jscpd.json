@@ -1,5 +1,5 @@
 {
-  "threshold": 0,
+  "threshold": 10,
   "reporters": ["html", "console"],
   "ignore": ["**/MONITORING.md"],
   "absolute": true

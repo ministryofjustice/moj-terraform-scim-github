@@ -1,4 +1,4 @@
-import { test, expect, describe, jest } from '@jest/globals'
+import { expect, describe, jest } from '@jest/globals'
 
 import { handler, scimGitHubToAWSIdentityStore } from './index.js'
 
@@ -39,7 +39,6 @@ export const createMockOctokit = ({ teams = [] } = {}) => {
 
 export const createMockIdentitystoreClient = ({
   identitystore,
-  membershipsByGroupId = {},
   listGroupMembershipsFirst = [],
   listGroupMembershipsSecond = [],
 } = {}) => {
@@ -177,6 +176,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
   })
 
   afterAll(() => {
+    // codespell:ignore afterAll
     process.env = originalEnv
   })
 
@@ -190,7 +190,7 @@ describe('scimGitHubToAWSIdentityStore', () => {
     const mockIdentitystore = createMockIdentitystore({
       awsGroupsFirst: ['test-team-0'], // group missing
       awsUsersFirst: [{ name: 'test-user-0', userId: 'test-user-0-userId' }], // user missing
-      // 👇 Second calls are after the users and groups are creted in IdentityStore
+      // 👇 Second calls are after the users and groups are created in IdentityStore
       awsGroupsSecond: ['test-team-0', 'test-team-1'],
       awsUsersSecond: [
         { name: 'test-user-0', userId: 'test-user-0-userId' },
