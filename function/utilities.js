@@ -146,7 +146,13 @@ export async function getIdentityStoreValuesByType(
     },
     params,
   )) {
-    const values = [...page[key]].map(mapper)
+    let values = [...page[key]].map(mapper)
+    if (type === 'groups') {
+      // filter out groups that start with 'azure-aws-sso-' [EntraID groups]
+      values = values.filter(
+        (group) => !group.name.startsWith('azure-aws-sso-'),
+      )
+    }
     list.push(...values)
   }
 
