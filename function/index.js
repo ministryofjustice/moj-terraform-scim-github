@@ -114,6 +114,10 @@ export const scimGitHubToAWSIdentityStore = async ({
   )
 
   for await (const group of refreshedGroups) {
+    if (group.name && group.name.startsWith('azure-aws-sso-')) {
+      continue
+    }
+
     const groupMemberships = await getIdentityStoreGroupMemberships(
       group.id,
       identitystore,
