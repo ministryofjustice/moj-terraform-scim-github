@@ -62,74 +62,58 @@ export class IdentityStoreService {
     return list
   }
 
-  async getIdentityStoreGroupMemberships(groupId) {
-    const parameters = {
-      IdentityStoreId: this.identityStoreId,
-      GroupId: groupId,
-    }
-    const command = new this.identitystore.ListGroupMembershipsCommand(
-      parameters,
-    )
-
-    try {
-      let response = await this.identitystoreClient.send(command)
-      let memberships = response.GroupMemberships.map((membership) => {
-        return {
-          userId: membership.MemberId.UserId,
-          membershipId: membership.MembershipId,
-        }
-      })
-
-      while (response.NextToken) {
+  async getIdentityStoreGroupMembershipsPageWithRetries(groupId, nextToken, maxRetries = 3) {
+    let response
+    for (let attempt = 0; ; attempt++) {
+      try {
+        console.log(`Fetching group memberships for group ${groupId}, attempt ${attempt + 1} of ${maxRetries}...`)
         response = await this.identitystoreClient.send(
           new this.identitystore.ListGroupMembershipsCommand({
-            ...parameters,
-            NextToken: response.NextToken,
+            IdentityStoreId: this.identityStoreId,
+            GroupId: groupId,
+            ...(nextToken ? { NextToken: nextToken } : {}),
           }),
         )
-        memberships = memberships.concat(
-          response.GroupMemberships.map((membership) => {
-            return {
-              userId: membership.MemberId.UserId,
-              membershipId: membership.MembershipId,
-            }
-          }),
+        return response
+      } catch (err) {
+        console.warn(`Error fetching group memberships for group ${groupId} on attempt ${attempt + 1} of ${maxRetries}:`, err)
+        const throttled =
+          err?.name === "ThrottlingException" ||
+          err?.name === "TooManyRequestsException" ||
+          err?.$metadata?.httpStatusCode === 429
+
+        if (!throttled || attempt >= maxRetries) throw err
+
+        const retryAfterSeconds = Number(err?.RetryAfterSeconds)
+        if (!retryAfterSeconds) {
+          console.error(`Request throttled but no Retry-After header found. Attempt ${attempt + 1} of ${maxRetries}.`)
+          throw err // no AWS-provided wait time
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryAfterSeconds * 1000),
         )
       }
-      return memberships
-    } catch (ThrottlingException) {
-      console.warn(
-        `ThrottlingException encountered when fetching memberships for group ${groupId}. Retrying after ${ThrottlingException.RetryAfterSeconds} seconds...`,
+    }
+  }
+
+  async getIdentityStoreGroupMemberships(groupId, maxRetries = 3) {
+    console.log(`Fetching group memberships for group ${groupId} with up to ${maxRetries} retries on throttling...`)
+
+    let response
+    let memberships = []
+
+    do {
+      response = await this.getIdentityStoreGroupMembershipsPageWithRetries(groupId, response?.NextToken, maxRetries)
+      memberships = memberships.concat(
+        response.GroupMemberships.map((membership) => ({
+          userId: membership.MemberId.UserId,
+          membershipId: membership.MembershipId,
+        })),
       )
-      const secondsToWait = Number(ThrottlingException.RetryAfterSeconds)
-      await new Promise((resolve) => setTimeout(resolve, secondsToWait))
-      let response = await this.identitystoreClient.send(command)
-      let memberships = response.GroupMemberships.map((membership) => {
-        return {
-          userId: membership.MemberId.UserId,
-          membershipId: membership.MembershipId,
-        }
-      })
+    } while (response?.NextToken)
 
-      while (response.NextToken) {
-        response = await this.identitystoreClient.send(
-          new this.identitystore.ListGroupMembershipsCommand({
-            ...parameters,
-            NextToken: response.NextToken,
-          }),
-        )
-        memberships = memberships.concat(
-          response.GroupMemberships.map((membership) => {
-            return {
-              userId: membership.MemberId.UserId,
-              membershipId: membership.MembershipId,
-            }
-          }),
-        )
-      }
-
-      return memberships
-    }
+    return memberships
   }
 
   async createGroup(displayName) {
