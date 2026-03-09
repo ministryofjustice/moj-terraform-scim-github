@@ -1,10 +1,8 @@
 import {
   getGitHubOrganisationTeamsAndMemberships,
-  getIdentityStoreValuesByType,
-  getIdentityStoreGroupMemberships,
   reconcile,
-  sync,
 } from './utilities.js'
+import { IdentityStoreService } from './identityStoreService.js'
 import * as identitystore from '@aws-sdk/client-identitystore'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/core'
@@ -44,7 +42,6 @@ export const handler = async () => {
   const identitystoreClient = new identitystore.IdentitystoreClient({
     region: process.env.SSO_AWS_REGION,
   })
-
   const dryrun = !process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false'
   if (dryrun) {
     console.log('Mode: dry-run (set env var NOT_DRY_RUN to `true` to change)')
@@ -66,64 +63,68 @@ export const scimGitHubToAWSIdentityStore = async ({
   gitHubTeamsIgnoreList,
   dryrun,
 }) => {
+  const identityStoreService = new IdentityStoreService(
+    identitystoreClient,
+    identitystore,
+    dryrun,
+  )
+
   const github = await getGitHubOrganisationTeamsAndMemberships(
     gitHubTeamsIgnoreList,
     octokit,
   )
 
-  // Reconcile groups
-  const identityStoreGroups = await getIdentityStoreValuesByType(
-    'groups',
-    identitystore,
-    identitystoreClient,
+  await syncGithubTeamsToIdentityStoreGroups(identityStoreService, github.teams)
+  await syncGithubUsersToIdentityStoreUsers(identityStoreService, github.users)
+  await syncGitHubTeamMembershipsToIdentityStoreGroupMemberships(
+    identityStoreService,
+    github.teams,
   )
-  const reconcileGroups = reconcile(identityStoreGroups, github.teams)
-  await sync(
-    'groups',
-    reconcileGroups,
-    identitystore,
-    identitystoreClient,
-    dryrun,
-  )
+}
 
-  // Reconcile users
-  const identityStoreUsers = await getIdentityStoreValuesByType(
-    'users',
-    identitystore,
-    identitystoreClient,
-  )
-  const reconcileUsers = reconcile(identityStoreUsers, github.users)
-  await sync(
-    'users',
-    reconcileUsers,
-    identitystore,
-    identitystoreClient,
-    dryrun,
-  )
+const syncGithubTeamsToIdentityStoreGroups = async (
+  identityStoreService,
+  githubTeams,
+) => {
+  const identityStoreGroups =
+    await identityStoreService.getIdentityStoreGroups()
+  const reconcileGroups = reconcile(identityStoreGroups, githubTeams)
+  for (const needsCreating of reconcileGroups.create) {
+    identityStoreService.createGroup(needsCreating.name)
+  }
+  for (const needsDeleting of reconcileGroups.delete) {
+    identityStoreService.deleteGroup(needsDeleting.id, needsDeleting.name)
+  }
+}
 
-  // Reconcile group memberships
-  const refreshedGroups = await getIdentityStoreValuesByType(
-    'groups',
-    identitystore,
-    identitystoreClient,
-  )
-  const refreshedUsers = await getIdentityStoreValuesByType(
-    'users',
-    identitystore,
-    identitystoreClient,
-  )
+const syncGithubUsersToIdentityStoreUsers = async (
+  identityStoreService,
+  githubUsers,
+) => {
+  const identityStoreUsers = await identityStoreService.getIdentityStoreUsers()
+  const reconcileUsers = reconcile(identityStoreUsers, githubUsers)
+  for (const needsCreating of reconcileUsers.create) {
+    identityStoreService.createUser(needsCreating.name)
+  }
+  for (const needsDeleting of reconcileUsers.delete) {
+    identityStoreService.deleteUser(needsDeleting.id, needsDeleting.Emails)
+  }
+}
+
+const syncGitHubTeamMembershipsToIdentityStoreGroupMemberships = async (
+  identityStoreService,
+  githubTeams,
+) => {
+  const refreshedGroups = await identityStoreService.getIdentityStoreGroups()
+  const refreshedUsers = await identityStoreService.getIdentityStoreUsers()
 
   for await (const group of refreshedGroups) {
     if (group.name && group.name.startsWith('azure-aws-sso-')) {
       continue
     }
 
-    const groupMemberships = await getIdentityStoreGroupMemberships(
-      group.id,
-      identitystore,
-      identitystoreClient,
-    )
-
+    const groupMemberships =
+      await identityStoreService.getIdentityStoreGroupMemberships(group.id)
     const groupMembershipsWithGroupDetails = groupMemberships.map(
       (membership) => {
         const user = refreshedUsers.find(
@@ -138,35 +139,38 @@ export const scimGitHubToAWSIdentityStore = async ({
       },
     )
 
-    const githubTeam = github.teams.find((team) => {
+    const githubTeam = githubTeams.find((team) => {
       return team.name === group.name
     })
 
     if (!githubTeam) {
       console.log(`cannot find ${group.name} - skipping`)
-    } else {
-      const githubTeamMembership = githubTeam.members.map((user) => {
-        const refreshedUser = refreshedUsers.find((refreshedUser) => {
-          return refreshedUser.name === user.name
-        })
+      continue
+    }
 
-        return {
-          ...refreshedUser,
-          group: group,
-        }
+    const githubTeamMembership = githubTeam.members.map((user) => {
+      const refreshedUser = refreshedUsers.find((refreshedUser) => {
+        return refreshedUser.name === user.name
       })
 
-      const reconcileMembership = reconcile(
-        groupMembershipsWithGroupDetails,
-        githubTeamMembership,
+      return {
+        ...refreshedUser,
+        group: group,
+      }
+    })
+
+    const reconcileMembership = reconcile(
+      groupMembershipsWithGroupDetails,
+      githubTeamMembership,
+    )
+    for (const needsCreating of reconcileMembership.create) {
+      identityStoreService.createGroupMembership(
+        needsCreating.group.id,
+        needsCreating.id,
       )
-      await sync(
-        'membership',
-        reconcileMembership,
-        identitystore,
-        identitystoreClient,
-        dryrun,
-      )
+    }
+    for (const needsDeleting of reconcileMembership.delete) {
+      identityStoreService.deleteGroupMembership(needsDeleting.membershipId)
     }
   }
 }

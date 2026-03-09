@@ -176,7 +176,6 @@ describe('scimGitHubToAWSIdentityStore', () => {
   })
 
   afterAll(() => {
-    // codespell:ignore afterAll
     process.env = originalEnv
   })
 
