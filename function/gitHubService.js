@@ -1,4 +1,3 @@
-// GitHub
 function generateQuery() {
   return `
     query paginate($cursor: String, $organization: String!) {
@@ -102,17 +101,3 @@ export async function getGitHubOrganisationTeamsAndMemberships(
   }
 }
 
-export function reconcile(original, updated) {
-  return {
-    create: updated.filter(
-      (updatedItem) =>
-        !original.find(
-          (originalItem) => originalItem.name === updatedItem.name,
-        ),
-    ),
-    delete: original.filter(
-      (originalItem) =>
-        !updated.find((updatedItem) => updatedItem.name === originalItem.name),
-    ),
-  }
-}

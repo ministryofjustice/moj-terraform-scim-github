@@ -1,7 +1,6 @@
 import {
   getGitHubOrganisationTeamsAndMemberships,
-  reconcile,
-} from './utilities.js'
+} from './gitHubService.js'
 import { IdentityStoreService } from './identityStoreService.js'
 import * as identitystore from '@aws-sdk/client-identitystore'
 import { createAppAuth } from '@octokit/auth-app'
@@ -174,3 +173,19 @@ const syncGitHubTeamMembershipsToIdentityStoreGroupMemberships = async (
     }
   }
 }
+
+const reconcile = (original, updated) => {
+  return {
+    create: updated.filter(
+      (updatedItem) =>
+        !original.find(
+          (originalItem) => originalItem.name === updatedItem.name,
+        ),
+    ),
+    delete: original.filter(
+      (originalItem) =>
+        !updated.find((updatedItem) => updatedItem.name === originalItem.name),
+    ),
+  }
+}
+
