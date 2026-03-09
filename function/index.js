@@ -87,12 +87,12 @@ const syncGithubTeamsToIdentityStoreGroups = async (
 ) => {
   const identityStoreGroups =
     await identityStoreService.getIdentityStoreGroups()
-  const reconcileGroups = reconcile(identityStoreGroups, githubTeams)
-  for (const needsCreating of reconcileGroups.create) {
-    identityStoreService.createGroup(needsCreating.name)
+  const reconcileGroupsPlan = reconcile(identityStoreGroups, githubTeams)
+  for (const group of reconcileGroupsPlan.create) {
+    identityStoreService.createGroup(group.name)
   }
-  for (const needsDeleting of reconcileGroups.delete) {
-    identityStoreService.deleteGroup(needsDeleting.id, needsDeleting.name)
+  for (const group of reconcileGroupsPlan.delete) {
+    identityStoreService.deleteGroup(group.id, group.name)
   }
 }
 
@@ -101,12 +101,12 @@ const syncGithubUsersToIdentityStoreUsers = async (
   githubUsers,
 ) => {
   const identityStoreUsers = await identityStoreService.getIdentityStoreUsers()
-  const reconcileUsers = reconcile(identityStoreUsers, githubUsers)
-  for (const needsCreating of reconcileUsers.create) {
-    identityStoreService.createUser(needsCreating.name)
+  const reconsileUsersPlan = reconcile(identityStoreUsers, githubUsers)
+  for (const user of reconsileUsersPlan.create) {
+    identityStoreService.createUser(user.name)
   }
-  for (const needsDeleting of reconcileUsers.delete) {
-    identityStoreService.deleteUser(needsDeleting.id, needsDeleting.Emails)
+  for (const user of reconsileUsersPlan.delete) {
+    identityStoreService.deleteUser(user.id, user.Emails)
   }
 }
 
@@ -158,34 +158,41 @@ const syncGitHubTeamMembershipsToIdentityStoreGroupMemberships = async (
       }
     })
 
-    const reconcileMembership = reconcile(
+    const reconcileGroupMembershipsPlan = reconcile(
       groupMembershipsWithGroupDetails,
       githubTeamMembership,
     )
-    for (const needsCreating of reconcileMembership.create) {
+    for (const membership of reconcileGroupMembershipsPlan.create) {
       identityStoreService.createGroupMembership(
-        needsCreating.group.id,
-        needsCreating.id,
+        membership.group.id,
+        membership.id,
       )
     }
-    for (const needsDeleting of reconcileMembership.delete) {
-      identityStoreService.deleteGroupMembership(needsDeleting.membershipId)
+    for (const membership of reconcileGroupMembershipsPlan.delete) {
+      identityStoreService.deleteGroupMembership(membership.membershipId)
     }
   }
 }
 
-const reconcile = (original, updated) => {
+export function reconcile(identityStoreItems, gitHubItems) {
+  const itemsHaveTheSameName = (firstItem, secondItem) =>
+    firstItem.name === secondItem.name
+
+  const listContainsAnItemWithTheSameNameAs = (list, itemToMatch) =>
+    list.some((itemInList) => itemsHaveTheSameName(itemInList, itemToMatch))
+
+  const itemsThatAreInGitHubButNotInIdentityStore = gitHubItems.filter(
+    (updatedItem) =>
+      !listContainsAnItemWithTheSameNameAs(identityStoreItems, updatedItem),
+  )
+
+  const itemsThatAreInIdentityStoreButNotInGitHub = identityStoreItems.filter(
+    (originalItem) =>
+      !listContainsAnItemWithTheSameNameAs(gitHubItems, originalItem),
+  )
+
   return {
-    create: updated.filter(
-      (updatedItem) =>
-        !original.find(
-          (originalItem) => originalItem.name === updatedItem.name,
-        ),
-    ),
-    delete: original.filter(
-      (originalItem) =>
-        !updated.find((updatedItem) => updatedItem.name === originalItem.name),
-    ),
+    create: itemsThatAreInGitHubButNotInIdentityStore,
+    delete: itemsThatAreInIdentityStoreButNotInGitHub,
   }
 }
-
