@@ -1,6 +1,4 @@
-import {
-  getGitHubOrganisationTeamsAndMemberships,
-} from './gitHubService.js'
+import { getGitHubOrganisationTeamsAndMemberships } from './gitHubService.js'
 import { IdentityStoreService } from './identityStoreService.js'
 import * as identitystore from '@aws-sdk/client-identitystore'
 import { createAppAuth } from '@octokit/auth-app'
@@ -114,53 +112,45 @@ const syncGitHubTeamMembershipsToIdentityStoreGroupMemberships = async (
   identityStoreService,
   githubTeams,
 ) => {
-  const refreshedGroups = await identityStoreService.getIdentityStoreGroups()
-  const refreshedUsers = await identityStoreService.getIdentityStoreUsers()
+  const identityStoreGroups =
+    await identityStoreService.getIdentityStoreGroups()
+  const identityStoreUsers = await identityStoreService.getIdentityStoreUsers()
 
-  for await (const group of refreshedGroups) {
-    if (group.name && group.name.startsWith('azure-aws-sso-')) {
-      continue
-    }
+  for await (const identityStoreGroup of identityStoreGroups) {
+    if (identityStoreService.isEntraIdGroup(identityStoreGroup.name)) continue // skip EntraID groups
 
     const groupMemberships =
-      await identityStoreService.getIdentityStoreGroupMemberships(group.id)
-    const groupMembershipsWithGroupDetails = groupMemberships.map(
-      (membership) => {
-        const user = refreshedUsers.find(
-          (user) => user.id === membership.userId,
-        )
+      await identityStoreService.getGroupMembershipsWithUserAndGroupDetails(
+        identityStoreGroup.id,
+        identityStoreUsers,
+        identityStoreGroup,
+      )
 
-        return {
-          ...user,
-          membershipId: membership.membershipId,
-          group: group,
-        }
-      },
-    )
-
-    const githubTeam = githubTeams.find((team) => {
-      return team.name === group.name
+    const githubTeam = githubTeams.find((githubTeam) => {
+      return githubTeam.name === identityStoreGroup.name
     })
-
     if (!githubTeam) {
-      console.log(`cannot find ${group.name} - skipping`)
+      console.warn(
+        `cannot find ${identityStoreGroup.name} - this group exists in identity store but not in github, these should have already been deleted or ignored`,
+      )
       continue
     }
 
-    const githubTeamMembership = githubTeam.members.map((user) => {
-      const refreshedUser = refreshedUsers.find((refreshedUser) => {
-        return refreshedUser.name === user.name
+    const desiredIdentityStoreMembershipsFromGitHubTeam =
+      githubTeam.members.map((githubUser) => {
+        const refreshedUser = identityStoreUsers.find((identityStoreUser) => {
+          return identityStoreUser.name === githubUser.name
+        })
+
+        return {
+          ...refreshedUser,
+          group: identityStoreGroup,
+        }
       })
 
-      return {
-        ...refreshedUser,
-        group: group,
-      }
-    })
-
     const reconcileGroupMembershipsPlan = reconcile(
-      groupMembershipsWithGroupDetails,
-      githubTeamMembership,
+      groupMemberships,
+      desiredIdentityStoreMembershipsFromGitHubTeam,
     )
     for (const membership of reconcileGroupMembershipsPlan.create) {
       identityStoreService.createGroupMembership(

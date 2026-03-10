@@ -27,9 +27,7 @@ export class IdentityStoreService {
           name: group.DisplayName.toLowerCase(),
         }
       })
-      values = values.filter(
-        (group) => !group.name.startsWith(this.groupPrefixForEntraIdGroups),
-      )
+      values = values.filter((group) => !this.isEntraIdGroup(group.name))
       list.push(...values)
     }
 
@@ -62,11 +60,17 @@ export class IdentityStoreService {
     return list
   }
 
-  async getIdentityStoreGroupMembershipsPageWithRetries(groupId, nextToken, maxRetries = 3) {
+  async getIdentityStoreGroupMembershipsPageWithRetries(
+    groupId,
+    nextToken,
+    maxRetries = 3,
+  ) {
     let response
     for (let attempt = 0; ; attempt++) {
       try {
-        console.log(`Fetching group memberships for group ${groupId}, attempt ${attempt + 1} of ${maxRetries}...`)
+        console.log(
+          `Fetching group memberships for group ${groupId}, attempt ${attempt + 1} of ${maxRetries}...`,
+        )
         response = await this.identitystoreClient.send(
           new this.identitystore.ListGroupMembershipsCommand({
             IdentityStoreId: this.identityStoreId,
@@ -76,17 +80,22 @@ export class IdentityStoreService {
         )
         return response
       } catch (err) {
-        console.warn(`Error fetching group memberships for group ${groupId} on attempt ${attempt + 1} of ${maxRetries}:`, err)
+        console.warn(
+          `Error fetching group memberships for group ${groupId} on attempt ${attempt + 1} of ${maxRetries}:`,
+          err,
+        )
         const throttled =
-          err?.name === "ThrottlingException" ||
-          err?.name === "TooManyRequestsException" ||
+          err?.name === 'ThrottlingException' ||
+          err?.name === 'TooManyRequestsException' ||
           err?.$metadata?.httpStatusCode === 429
 
         if (!throttled || attempt >= maxRetries) throw err
 
         const retryAfterSeconds = Number(err?.RetryAfterSeconds)
         if (!retryAfterSeconds) {
-          console.error(`Request throttled but no Retry-After header found. Attempt ${attempt + 1} of ${maxRetries}.`)
+          console.error(
+            `Request throttled but no Retry-After header found. Attempt ${attempt + 1} of ${maxRetries}.`,
+          )
           throw err // no AWS-provided wait time
         }
 
@@ -98,13 +107,17 @@ export class IdentityStoreService {
   }
 
   async getIdentityStoreGroupMemberships(groupId, maxRetries = 3) {
-    console.log(`Fetching group memberships for group ${groupId} with up to ${maxRetries} retries on throttling...`)
-
+    console.log(
+      `Fetching group memberships for group ${groupId} with up to ${maxRetries} retries on throttling...`,
+    )
     let response
     let memberships = []
-
     do {
-      response = await this.getIdentityStoreGroupMembershipsPageWithRetries(groupId, response?.NextToken, maxRetries)
+      response = await this.getIdentityStoreGroupMembershipsPageWithRetries(
+        groupId,
+        response?.NextToken,
+        maxRetries,
+      )
       memberships = memberships.concat(
         response.GroupMemberships.map((membership) => ({
           userId: membership.MemberId.UserId,
@@ -193,7 +206,7 @@ export class IdentityStoreService {
   }
 
   async deleteGroup(groupId, groupName) {
-    if (groupName && groupName.startsWith(this.groupPrefixForEntraIdGroups)) {
+    if (this.isEntraIdGroup(groupName)) {
       console.debug(`Skipping deletion of EntraID Group: ${groupName}`)
       return
     }
@@ -259,5 +272,35 @@ export class IdentityStoreService {
     } catch (error) {
       console.error(error)
     }
+  }
+
+  isEntraIdGroup(groupName) {
+    return groupName && groupName.startsWith(this.groupPrefixForEntraIdGroups)
+  }
+
+  decorateGroupMembershipWithUserDetailsAndGroupDetails(
+    groupMemberships,
+    users,
+    group,
+  ) {
+    return groupMemberships.map((membership) => {
+      const user = users.find((user) => user.id === membership.userId)
+
+      return {
+        ...user,
+        membershipId: membership.membershipId,
+        group: group,
+      }
+    })
+  }
+
+  async getGroupMembershipsWithUserAndGroupDetails(groupId, users, group) {
+    const groupMemberships =
+      await this.getIdentityStoreGroupMemberships(groupId)
+    return this.decorateGroupMembershipWithUserDetailsAndGroupDetails(
+      groupMemberships,
+      users,
+      group,
+    )
   }
 }
