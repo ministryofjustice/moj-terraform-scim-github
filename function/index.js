@@ -38,6 +38,7 @@ export const handler = async () => {
 
   const identitystoreClient = new identitystore.IdentitystoreClient({
     region: process.env.SSO_AWS_REGION,
+    maxAttempts: 5,
   })
   const dryrun = !process.env.NOT_DRY_RUN || process.env.NOT_DRY_RUN === 'false'
   if (dryrun) {
