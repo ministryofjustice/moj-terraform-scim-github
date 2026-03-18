@@ -60,64 +60,19 @@ export class IdentityStoreService {
     return list
   }
 
-  async getIdentityStoreGroupMembershipsPageWithRetries(
-    groupId,
-    nextToken,
-    maxRetries = 3,
-  ) {
-    let response
-    for (let attempt = 0; ; attempt++) {
-      try {
-        console.log(
-          `Fetching group memberships for group ${groupId}, attempt ${attempt + 1} of ${maxRetries}...`,
-        )
-        response = await this.identitystoreClient.send(
-          new this.identitystore.ListGroupMembershipsCommand({
-            IdentityStoreId: this.identityStoreId,
-            GroupId: groupId,
-            ...(nextToken ? { NextToken: nextToken } : {}),
-          }),
-        )
-        return response
-      } catch (err) {
-        console.warn(
-          `Error fetching group memberships for group ${groupId} on attempt ${attempt + 1} of ${maxRetries}:`,
-          err,
-        )
-        const throttled =
-          err?.name === 'ThrottlingException' ||
-          err?.name === 'TooManyRequestsException' ||
-          err?.$metadata?.httpStatusCode === 429
-
-        if (!throttled || attempt >= maxRetries) throw err
-
-        const retryAfterSeconds = Number(err?.RetryAfterSeconds)
-        if (!retryAfterSeconds) {
-          console.error(
-            `Request throttled but no Retry-After header found. Attempt ${attempt + 1} of ${maxRetries}.`,
-          )
-          throw err // no AWS-provided wait time
-        }
-
-        await new Promise((resolve) =>
-          setTimeout(resolve, retryAfterSeconds * 1000),
-        )
-      }
-    }
-  }
-
-  async getIdentityStoreGroupMemberships(groupId, maxRetries = 3) {
-    console.log(
-      `Fetching group memberships for group ${groupId} with up to ${maxRetries} retries on throttling...`,
-    )
+  async getIdentityStoreGroupMemberships(groupId) {
+    console.log(`Fetching group memberships for group ${groupId}`)
     let response
     let memberships = []
     do {
-      response = await this.getIdentityStoreGroupMembershipsPageWithRetries(
-        groupId,
-        response?.NextToken,
-        maxRetries,
+      response = await this.identitystoreClient.send(
+        new this.identitystore.ListGroupMembershipsCommand({
+          IdentityStoreId: this.identityStoreId,
+          GroupId: groupId,
+          ...(response?.NextToken ? { NextToken: response?.NextToken } : {}),
+        }),
       )
+
       memberships = memberships.concat(
         response.GroupMemberships.map((membership) => ({
           userId: membership.MemberId.UserId,
