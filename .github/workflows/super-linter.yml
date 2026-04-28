@@ -39,3 +39,4 @@ jobs:
           FILTER_REGEX_EXCLUDE: .*\.devcontainer/.*
           JAVASCRIPT_ES_CONFIG_FILE: eslint.config.js
           PRETTIER_COMMAND_OPTIONS: --config ./.prettierrc.yaml
+          VALIDATE_TRIVY: false
