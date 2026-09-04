@@ -17,8 +17,8 @@
     "octokit": "^5.0.5"
   },
   "devDependencies": {
-    "@jest/globals": "^30.5.0",
-    "jest": "30.4.2"
+    "@jest/globals": "^30.5.1",
+    "jest": "30.5.1"
   },
   "type": "module",
   "jest": {
