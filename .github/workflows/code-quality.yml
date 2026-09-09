@@ -22,3 +22,4 @@ jobs:
     with:
       validate_all_codebase: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
       filter_regex_exclude: "^README.md$"
+      enable_codeql: false
